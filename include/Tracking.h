@@ -37,6 +37,7 @@
 #include "Initializer.h"
 #include "MapDrawer.h"
 #include "System.h"
+#include "ObjectTracker.h"
 
 #include <mutex>
 
@@ -114,6 +115,12 @@ public:
     bool mbOnlyTracking;
 
     void Reset();
+
+    // support for visual object tracking
+    ObjectTracker* mpObjectTracker;
+    cv::Rect mObjectBox;
+    int mRadioMaxIndex;
+    float mRadioMax;
 
 protected:
 
@@ -214,6 +221,13 @@ protected:
     bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
+
+
+
+    //tracker
+    int nframe;
+    int tracking_start_frame_no;
+    bool pause;
 };
 
 } //namespace ORB_SLAM

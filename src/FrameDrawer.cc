@@ -118,6 +118,10 @@ cv::Mat FrameDrawer::DrawFrame()
         }
     }
 
+    /*start*** support for tracking algorithm**/
+    rectangle(im, mBenchmarkObjectBox, Scalar(200, 0, 0), 2);
+    rectangle(im, mMaxObjectBox, Scalar(0, 0, 200), 2);
+    /*end**** support for tracking algorithm**/
     cv::Mat imWithInfo;
     DrawTextInfo(im,state, imWithInfo);
 
@@ -153,13 +157,20 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
         s << " LOADING ORB VOCABULARY. PLEASE WAIT...";
     }
 
+
+    stringstream object_tracking_s;
+    object_tracking_s << "Index" << mBenchmarkRadioMaxIndex << "Max" << mBenchmarkRadioMax ;
+    object_tracking_s << "| index " << index << " Index " << mMaxRadioMaxIndex << "Max" << mMaxRadioMax;
     int baseline=0;
     cv::Size textSize = cv::getTextSize(s.str(),cv::FONT_HERSHEY_PLAIN,1,1,&baseline);
 
-    imText = cv::Mat(im.rows+textSize.height+10,im.cols,im.type());
+
+    int rowSize = textSize.height + 10;
+    imText = cv::Mat(im.rows+2* rowSize,im.cols,im.type());
     im.copyTo(imText.rowRange(0,im.rows).colRange(0,im.cols));
-    imText.rowRange(im.rows,imText.rows) = cv::Mat::zeros(textSize.height+10,im.cols,im.type());
-    cv::putText(imText,s.str(),cv::Point(5,imText.rows-5),cv::FONT_HERSHEY_PLAIN,1,cv::Scalar(255,255,255),1,8);
+    imText.rowRange(im.rows,im.rows + rowSize) = cv::Mat::zeros(textSize.height+10,im.cols,im.type());
+    cv::putText(imText,s.str(),cv::Point(5,imText.rows-5 - rowSize),cv::FONT_HERSHEY_PLAIN,1,cv::Scalar(255,255,255),1,8);
+    cv::putText(imText,object_tracking_s.str(),cv::Point(5,imText.rows-5),cv::FONT_HERSHEY_PLAIN,1,cv::Scalar(255,255,255),1,8);
 
 }
 
@@ -172,6 +183,28 @@ void FrameDrawer::Update(Tracking *pTracker)
     mvbVO = vector<bool>(N,false);
     mvbMap = vector<bool>(N,false);
     mbOnlyTracking = pTracker->mbOnlyTracking;
+
+    mBenchmarkObjectBox = pTracker->mpObjectTracker->mBenchmarkObjectBox;
+    mBenchmarkRadioMaxIndex = pTracker->mpObjectTracker->mBenchmarkRadioMaxIndex;
+    mBenchmarkRadioMax = pTracker->mpObjectTracker->mBenchmarkRadioMax;
+
+    mvRadioMaxIndexes = pTracker->mpObjectTracker->mvRadioMaxIndexes;
+    mvRadioMaxes = pTracker->mpObjectTracker->mvRadioMaxes;
+    mvObjectBoxes = pTracker->mpObjectTracker->mvObjectBoxes;
+
+
+    mMaxRadioMax = mvRadioMaxes[0];
+    index = 0;
+    for(int i = 1; i < (int)mvRadioMaxes.size(); ++i){
+        if (mvRadioMaxes[i] > mMaxRadioMax){
+            index = i;
+            mMaxRadioMax = mvRadioMaxes[i];
+        }
+    }
+
+    mMaxRadioMaxIndex = mvRadioMaxIndexes[index];
+    mMaxObjectBox = mvObjectBoxes[index];
+
 
 
     if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)
@@ -198,5 +231,6 @@ void FrameDrawer::Update(Tracking *pTracker)
     }
     mState=static_cast<int>(pTracker->mLastProcessedState);
 }
+
 
 } //namespace ORB_SLAM

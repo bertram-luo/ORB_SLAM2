@@ -66,6 +66,22 @@ protected:
     Map* mpMap;
 
     std::mutex mMutex;
+
+    cv::Rect mBenchmarkObjectBox;
+    int mBenchmarkRadioMaxIndex;
+    float mBenchmarkRadioMax;
+
+    std::vector<cv::Rect> mvObjectBoxes;
+    std::vector<int> mvRadioMaxIndexes;
+    std::vector<float> mvRadioMaxes;
+
+    cv::Rect mMaxObjectBox;
+    int mMaxRadioMaxIndex;
+    float mMaxRadioMax;
+
+    int index;
+
+
 };
 
 } //namespace ORB_SLAM

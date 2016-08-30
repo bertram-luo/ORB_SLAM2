@@ -37,7 +37,6 @@
 
 #include<mutex>
 
-
 using namespace std;
 
 namespace ORB_SLAM2
@@ -46,9 +45,8 @@ namespace ORB_SLAM2
 Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
     mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
     mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys),
-    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0)
-{
-    // Load camera parameters from settings file
+    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0), mRadioMaxIndex(0), mRadioMax(0), pause(true)
+    {
 
     cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
     float fx = fSettings["Camera.fx"];
@@ -62,6 +60,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     K.at<float>(0,2) = cx;
     K.at<float>(1,2) = cy;
     K.copyTo(mK);
+
 
     cv::Mat DistCoef(4,1,CV_32F);
     DistCoef.at<float>(0) = fSettings["Camera.k1"];
@@ -146,6 +145,21 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
 
+
+
+    // initialize tracker;
+    int x = fSettings["Tracking.x"];
+    int y = fSettings["Tracking.y"];
+    int w = fSettings["Tracking.width"];
+    int h = fSettings["Tracking.height"];
+    printf("object position[%d %d %d %d]\n", x, y, w, h);
+    mObjectBox = cv::Rect(x, y, w, h);
+
+    tracking_start_frame_no = fSettings["Tracking.startFrame"];
+    printf("tracking start frame no%d\n", tracking_start_frame_no);
+    mpObjectTracker = new ObjectTracker;
+
+    nframe = 0;
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -259,6 +273,8 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     else
         mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
 
+
+    nframe++;
     Track();
 
     return mCurrentFrame.mTcw.clone();
@@ -266,6 +282,18 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 
 void Tracking::Track()
 {
+
+
+    if (nframe >= tracking_start_frame_no){
+        if (nframe == tracking_start_frame_no){
+            mpObjectTracker->init(mImGray, mObjectBox); 
+        }
+        
+        mpObjectTracker->processFrame(mImGray, mObjectBox, mRadioMaxIndex, mRadioMax);
+
+        //waitKey(0);
+    }
+
     if(mState==NO_IMAGES_YET)
     {
         mState = NOT_INITIALIZED;
@@ -454,8 +482,9 @@ void Tracking::Track()
             mlpTemporalPoints.clear();
 
             // Check if we need to insert a new keyframe
-            if(NeedNewKeyFrame())
+            if(NeedNewKeyFrame()){
                 CreateNewKeyFrame();
+            }
 
             // We allow points with high innovation (considererd outliers by the Huber Function)
             // pass to the new keyframe, so that bundle adjustment will finally decide
@@ -595,6 +624,7 @@ void Tracking::MonocularInitialization()
             return;
         }
 
+        //TODO learn the algorithm of initialization
         // Find correspondences
         ORBmatcher matcher(0.9,true);
         int nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
@@ -611,7 +641,7 @@ void Tracking::MonocularInitialization()
         cv::Mat tcw; // Current Camera Translation
         vector<bool> vbTriangulated; // Triangulated Correspondences (mvIniMatches)
 
-        if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
+        if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))//TODO read
         {
             for(size_t i=0, iend=mvIniMatches.size(); i<iend;i++)
             {
@@ -629,7 +659,7 @@ void Tracking::MonocularInitialization()
             tcw.copyTo(Tcw.rowRange(0,3).col(3));
             mCurrentFrame.SetPose(Tcw);
 
-            CreateInitialMapMonocular();
+            CreateInitialMapMonocular();//TODO continuing point
         }
     }
 }
@@ -918,11 +948,15 @@ bool Tracking::TrackWithMotionModel()
         }
     }    
 
+
+    printf("N:%d nmatches:%d, nmatchesMap%d, less %d\n", mCurrentFrame.N, nmatches, nmatchesMap, nmatches - nmatchesMap);
+
     if(mbOnlyTracking)
     {
         mbVO = nmatchesMap<10;
         return nmatches>20;
     }
+    printf("matches %d\n", nmatchesMap);
 
     return nmatchesMap>=10;
 }
@@ -1185,7 +1219,7 @@ void Tracking::SearchLocalPoints()
         if(pMP->isBad())
             continue;
         // Project (this fills MapPoint variables for matching)
-        if(mCurrentFrame.isInFrustum(pMP,0.5))
+        if(mCurrentFrame.isInFrustum(pMP,0.5))//TODO
         {
             pMP->IncreaseVisible();
             nToMatch++;
@@ -1201,7 +1235,7 @@ void Tracking::SearchLocalPoints()
         // If the camera has been relocalised recently, perform a coarser search
         if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
             th=5;
-        matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
+        matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);//TODO read !!important
     }
 }
 
