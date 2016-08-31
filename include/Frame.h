@@ -153,6 +153,7 @@ public:
     std::vector<MapPoint*> mvpMapPoints;
     // DEBUG: for checking matches from local map;
     std::vector<bool> mvbMapPointsMatchFromLocalMap;
+    std::vector<bool> mvbMapPointsMatchFromPreviousFrame;
 
     // Flag to identify outlier associations.
     std::vector<bool> mvbOutlier;

@@ -1212,16 +1212,20 @@ void Tracking::SearchLocalPoints()
 
     int nToMatch=0;
 
+
+    int nLastSeen = 0;
     // Project points in frame and check its visibility
     for(vector<MapPoint*>::iterator vit=mvpLocalMapPoints.begin(), vend=mvpLocalMapPoints.end(); vit!=vend; vit++)
     {
         MapPoint* pMP = *vit;
-        if(pMP->mnLastFrameSeen == mCurrentFrame.mnId)
-            continue;
+        if(pMP->mnLastFrameSeen == mCurrentFrame.mnId){
+            nLastSeen ++;//TODO record and display
+            //continue;
+        }
         if(pMP->isBad())
             continue;
         // Project (this fills MapPoint variables for matching)
-        if(mCurrentFrame.isInFrustum(pMP,0.5))//TODO
+        if(mCurrentFrame.isInFrustum(pMP,0.5))
         {
             pMP->IncreaseVisible();
             nToMatch++;
@@ -1238,7 +1242,7 @@ void Tracking::SearchLocalPoints()
         if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
             th=5;
         mnMatchesByProjectionMapPointCovFrames = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);//TODO read !!important
-        printf("==== n matches %d from local map \n", mnMatchesByProjectionMapPointCovFrames);
+        printf("n last seen: %d====nToMatch:%d n matches %d from local map \n",nLastSeen, nToMatch, mnMatchesByProjectionMapPointCovFrames);
     }
 }
 

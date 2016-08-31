@@ -53,7 +53,7 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
     for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++)
     {
         MapPoint* pMP = vpMapPoints[iMP];
-        if(!pMP->mbTrackInView)
+        if(!pMP->mbTrackInView)//check mvbmatch from local map
             continue;
 
         if(pMP->isBad())
@@ -1340,6 +1340,9 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
 {
     int nmatches = 0;
 
+
+    F.mvbMapPointsMatchFromPreviousFrame.resize(F.mvpMapPoints.size(), false);
+
     // Rotation Histogram (to check rotation consistency)
     vector<int> rotHist[HISTO_LENGTH];
     for(int i=0;i<HISTO_LENGTH;i++)
@@ -1437,6 +1440,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
                 if(bestDist<=TH_HIGH)
                 {
                     CurrentFrame.mvpMapPoints[bestIdx2]=pMP;//TODO gotcha 
+                    F.mvbMapPointsMatchFromPreviousFrame[bestIdx2]=true;
                     nmatches++;
 
                     if(mbCheckOrientation)
