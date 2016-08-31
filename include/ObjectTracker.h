@@ -28,4 +28,11 @@ public:
     std::vector<float> mvRadioMaxes;
     std::vector<cv::Rect> mvObjectBoxes;
 
+    int  mKeyTrackerRadioMaxIndex;
+    float mKeyTrackerRadioMax;
+    cv::Rect mKeyTrackerObjectBox;
+    int mKeyTrackerIndex; 
+
+    int mnTrackers;
+
 };

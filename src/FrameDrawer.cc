@@ -44,9 +44,20 @@ cv::Mat FrameDrawer::DrawFrame()
     vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
     int state; // Tracking state
 
+
     //Copy variables within scoped mutex
     {
         unique_lock<mutex> lock(mMutex);
+
+        mtBenchmarkObjectBox = mBenchmarkObjectBox;
+        mtBenchmarkRadioMaxIndex = mBenchmarkRadioMaxIndex;
+        mtBenchmarkRadioMax = mBenchmarkRadioMax;
+
+        mtKeyTrackerRadioMaxIndex = mKeyTrackerRadioMaxIndex;
+        mtKeyTrackerRadioMax = mKeyTrackerRadioMax;
+        mtKeyTrackerObjectBox = mKeyTrackerObjectBox;
+        mtKeyTrackerIndex = mKeyTrackerIndex;
+
         state=mState;
         if(mState==Tracking::SYSTEM_NOT_READY)
             mState=Tracking::NO_IMAGES_YET;
@@ -119,8 +130,8 @@ cv::Mat FrameDrawer::DrawFrame()
     }
 
     /*start*** support for tracking algorithm**/
-    rectangle(im, mBenchmarkObjectBox, Scalar(200, 0, 0), 2);
-    rectangle(im, mMaxObjectBox, Scalar(0, 0, 200), 2);
+    rectangle(im, mtBenchmarkObjectBox, Scalar(200, 0, 0), 2);
+    rectangle(im, mtKeyTrackerObjectBox, Scalar(0, 0, 200), 2);
     /*end**** support for tracking algorithm**/
     cv::Mat imWithInfo;
     DrawTextInfo(im,state, imWithInfo);
@@ -159,8 +170,8 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 
 
     stringstream object_tracking_s;
-    object_tracking_s << "Index" << mBenchmarkRadioMaxIndex << "Max" << mBenchmarkRadioMax ;
-    object_tracking_s << "| index " << index << " Index " << mMaxRadioMaxIndex << "Max" << mMaxRadioMax;
+    object_tracking_s << "Index" << mtBenchmarkRadioMaxIndex << "Max" << mBenchmarkRadioMax ;
+    object_tracking_s << "| index " << mtKeyTrackerIndex << " Index " << mtKeyTrackerRadioMaxIndex << "Max" << mtKeyTrackerRadioMax;
     int baseline=0;
     cv::Size textSize = cv::getTextSize(s.str(),cv::FONT_HERSHEY_PLAIN,1,1,&baseline);
 
@@ -168,7 +179,7 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
     int rowSize = textSize.height + 10;
     imText = cv::Mat(im.rows+2* rowSize,im.cols,im.type());
     im.copyTo(imText.rowRange(0,im.rows).colRange(0,im.cols));
-    imText.rowRange(im.rows,im.rows + rowSize) = cv::Mat::zeros(textSize.height+10,im.cols,im.type());
+    imText.rowRange(im.rows,im.rows + 2 * rowSize) = cv::Mat::zeros(2*(rowSize),im.cols,im.type());
     cv::putText(imText,s.str(),cv::Point(5,imText.rows-5 - rowSize),cv::FONT_HERSHEY_PLAIN,1,cv::Scalar(255,255,255),1,8);
     cv::putText(imText,object_tracking_s.str(),cv::Point(5,imText.rows-5),cv::FONT_HERSHEY_PLAIN,1,cv::Scalar(255,255,255),1,8);
 
@@ -188,23 +199,10 @@ void FrameDrawer::Update(Tracking *pTracker)
     mBenchmarkRadioMaxIndex = pTracker->mpObjectTracker->mBenchmarkRadioMaxIndex;
     mBenchmarkRadioMax = pTracker->mpObjectTracker->mBenchmarkRadioMax;
 
-    mvRadioMaxIndexes = pTracker->mpObjectTracker->mvRadioMaxIndexes;
-    mvRadioMaxes = pTracker->mpObjectTracker->mvRadioMaxes;
-    mvObjectBoxes = pTracker->mpObjectTracker->mvObjectBoxes;
-
-
-    mMaxRadioMax = mvRadioMaxes[0];
-    index = 0;
-    for(int i = 1; i < (int)mvRadioMaxes.size(); ++i){
-        if (mvRadioMaxes[i] > mMaxRadioMax){
-            index = i;
-            mMaxRadioMax = mvRadioMaxes[i];
-        }
-    }
-
-    mMaxRadioMaxIndex = mvRadioMaxIndexes[index];
-    mMaxObjectBox = mvObjectBoxes[index];
-
+    mKeyTrackerRadioMaxIndex = pTracker->mpObjectTracker->mKeyTrackerRadioMaxIndex;
+    mKeyTrackerRadioMax = pTracker->mpObjectTracker->mKeyTrackerRadioMax;
+    mKeyTrackerObjectBox = pTracker->mpObjectTracker->mKeyTrackerObjectBox;
+    mKeyTrackerIndex = pTracker->mpObjectTracker->mKeyTrackerIndex;
 
 
     if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)

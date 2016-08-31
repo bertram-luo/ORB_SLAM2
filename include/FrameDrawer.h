@@ -71,16 +71,20 @@ protected:
     int mBenchmarkRadioMaxIndex;
     float mBenchmarkRadioMax;
 
-    std::vector<cv::Rect> mvObjectBoxes;
-    std::vector<int> mvRadioMaxIndexes;
-    std::vector<float> mvRadioMaxes;
+    int mKeyTrackerRadioMaxIndex;
+    float mKeyTrackerRadioMax;
+    cv::Rect mKeyTrackerObjectBox;
+    int mKeyTrackerIndex;
 
-    cv::Rect mMaxObjectBox;
-    int mMaxRadioMaxIndex;
-    float mMaxRadioMax;
 
-    int index;
+    cv::Rect mtBenchmarkObjectBox;
+    int mtBenchmarkRadioMaxIndex;
+    float mtBenchmarkRadioMax;
 
+    int mtKeyTrackerRadioMaxIndex;
+    float mtKeyTrackerRadioMax;
+    cv::Rect mtKeyTrackerObjectBox;
+    int mtKeyTrackerIndex;
 
 };
 
