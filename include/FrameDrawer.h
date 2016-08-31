@@ -92,6 +92,9 @@ protected:
 
     int mntMatchesByProjectionLastFrame;
     int mntMatchesByProjectionMapPointCovFrames;
+
+    std::vector<bool> mvbMapPointsMatchFromLocalMap;
+    std::vector<bool> mvbtMapPointsMatchFromLocalMap;
 };
 
 } //namespace ORB_SLAM

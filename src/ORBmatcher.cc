@@ -47,9 +47,9 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
     int nmatches=0;
 
     const bool bFactor = th!=1.0;
-
-        int n1 = 0;
-        int n2 = 0;
+    F.mvbMapPointsMatchFromLocalMap.resize(F.mvpMapPoints.size(), false);
+    int n1 = 0;
+    int n2 = 0;
     for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++)
     {
         MapPoint* pMP = vpMapPoints[iMP];
@@ -128,6 +128,7 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
             if(bestLevel==bestLevel2 && bestDist>mfNNratio*bestDist2)
                 continue;
 
+            F.mvbMapPointsMatchFromLocalMap[bestIdx] = true;
             F.mvpMapPoints[bestIdx]=pMP;
             nmatches++;
         }

@@ -61,6 +61,7 @@ cv::Mat FrameDrawer::DrawFrame()
         mntMatchesByProjectionLastFrame = mnMatchesByProjectionLastFrame;
         mntMatchesByProjectionMapPointCovFrames = mnMatchesByProjectionMapPointCovFrames;
 
+        mvbMapPointsMatchFromLocalMap = mvbtMapPointsMatchFromLocalMap;
 
         state=mState;
         if(mState==Tracking::SYSTEM_NOT_READY)
@@ -119,8 +120,16 @@ cv::Mat FrameDrawer::DrawFrame()
                 // This is a match to a MapPoint in the map
                 if(vbMap[i])
                 {
-                    cv::rectangle(im,pt1,pt2,cv::Scalar(0,255,0));
-                    cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0,255,0),-1);
+
+                    if (mvbMapPointsMatchFromLocalMap[i]){
+                        cv::rectangle(im,pt1,pt2,cv::Scalar(0,0, 255));
+                        cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0,255,0),-1);
+                    
+                    } else {
+                        cv::rectangle(im,pt1,pt2,cv::Scalar(0,255,0));
+                        cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0,255,0),-1);
+                    
+                    }
                     mnTracked++;
                 }
                 else // This is match to a "visual odometry" MapPoint created in the last frame
@@ -180,7 +189,10 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
     cv::Size textSize = cv::getTextSize(s.str(),cv::FONT_HERSHEY_PLAIN,1,1,&baseline);
 
     stringstream match_info_s;
-    match_info_s << "match with LF:" << mntMatchesByProjectionLastFrame<< "Local Map:" << mntMatchesByProjectionMapPointCovFrames;
+    match_info_s << "match with LF:" << mntMatchesByProjectionLastFrame
+        << "Local Map:"<< mntMatchesByProjectionMapPointCovFrames
+        <<"| ratio naive:"<< (float)mntMatchesByProjectionMapPointCovFrames/mntMatchesByProjectionLastFrame 
+        << "|ratio finally" <<(float)mntMatchesByProjectionMapPointCovFrames/mnTracked;
 
 
     int rowSize = textSize.height + 10;
@@ -219,6 +231,7 @@ void FrameDrawer::Update(Tracking *pTracker)
     mnMatchesByProjectionLastFrame = pTracker->mnMatchesByProjectionLastFrame ;
     mnMatchesByProjectionMapPointCovFrames = pTracker->mnMatchesByProjectionMapPointCovFrames;
 
+    mvbMapPointsMatchFromLocalMap = pTracker->mCurrentFrame.mvbMapPointsMatchFromLocalMap;
 
     if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)
     {
