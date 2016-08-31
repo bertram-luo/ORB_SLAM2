@@ -58,6 +58,10 @@ cv::Mat FrameDrawer::DrawFrame()
         mtKeyTrackerObjectBox = mKeyTrackerObjectBox;
         mtKeyTrackerIndex = mKeyTrackerIndex;
 
+        mntMatchesByProjectionLastFrame = mnMatchesByProjectionLastFrame;
+        mntMatchesByProjectionMapPointCovFrames = mnMatchesByProjectionMapPointCovFrames;
+
+
         state=mState;
         if(mState==Tracking::SYSTEM_NOT_READY)
             mState=Tracking::NO_IMAGES_YET;
@@ -175,13 +179,17 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
     int baseline=0;
     cv::Size textSize = cv::getTextSize(s.str(),cv::FONT_HERSHEY_PLAIN,1,1,&baseline);
 
+    stringstream match_info_s;
+    match_info_s << "match with LF:" << mntMatchesByProjectionLastFrame<< "Local Map:" << mntMatchesByProjectionMapPointCovFrames;
+
 
     int rowSize = textSize.height + 10;
-    imText = cv::Mat(im.rows+2* rowSize,im.cols,im.type());
+    imText = cv::Mat(im.rows+3* rowSize,im.cols,im.type());
     im.copyTo(imText.rowRange(0,im.rows).colRange(0,im.cols));
-    imText.rowRange(im.rows,im.rows + 2 * rowSize) = cv::Mat::zeros(2*(rowSize),im.cols,im.type());
-    cv::putText(imText,s.str(),cv::Point(5,imText.rows-5 - rowSize),cv::FONT_HERSHEY_PLAIN,1,cv::Scalar(255,255,255),1,8);
-    cv::putText(imText,object_tracking_s.str(),cv::Point(5,imText.rows-5),cv::FONT_HERSHEY_PLAIN,1,cv::Scalar(255,255,255),1,8);
+    imText.rowRange(im.rows,im.rows + 3 * rowSize) = cv::Mat::zeros(3*(rowSize),im.cols,im.type());
+    cv::putText(imText,s.str(),cv::Point(5,imText.rows-5 - 2 * rowSize),cv::FONT_HERSHEY_PLAIN,1,cv::Scalar(255,255,255),1,8);
+    cv::putText(imText,object_tracking_s.str(),cv::Point(5,imText.rows-5 -rowSize),cv::FONT_HERSHEY_PLAIN,1,cv::Scalar(255,255,255),1,8);
+    cv::putText(imText, match_info_s.str(),cv::Point(5,imText.rows-5),cv::FONT_HERSHEY_PLAIN,1,cv::Scalar(255,255,255),1,8);
 
 }
 
@@ -195,6 +203,8 @@ void FrameDrawer::Update(Tracking *pTracker)
     mvbMap = vector<bool>(N,false);
     mbOnlyTracking = pTracker->mbOnlyTracking;
 
+
+    // for trackers;
     mBenchmarkObjectBox = pTracker->mpObjectTracker->mBenchmarkObjectBox;
     mBenchmarkRadioMaxIndex = pTracker->mpObjectTracker->mBenchmarkRadioMaxIndex;
     mBenchmarkRadioMax = pTracker->mpObjectTracker->mBenchmarkRadioMax;
@@ -203,6 +213,11 @@ void FrameDrawer::Update(Tracking *pTracker)
     mKeyTrackerRadioMax = pTracker->mpObjectTracker->mKeyTrackerRadioMax;
     mKeyTrackerObjectBox = pTracker->mpObjectTracker->mKeyTrackerObjectBox;
     mKeyTrackerIndex = pTracker->mpObjectTracker->mKeyTrackerIndex;
+
+
+    // for debug;
+    mnMatchesByProjectionLastFrame = pTracker->mnMatchesByProjectionLastFrame ;
+    mnMatchesByProjectionMapPointCovFrames = pTracker->mnMatchesByProjectionMapPointCovFrames;
 
 
     if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)

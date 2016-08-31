@@ -483,6 +483,7 @@ void Tracking::Track()
 
             // Check if we need to insert a new keyframe
             if(NeedNewKeyFrame()){
+                printf("new key frame inserted\n");
                 CreateNewKeyFrame();
             }
 
@@ -951,12 +952,13 @@ bool Tracking::TrackWithMotionModel()
 
     printf("N:%d nmatches:%d, nmatchesMap%d, less %d\n", mCurrentFrame.N, nmatches, nmatchesMap, nmatches - nmatchesMap);
 
+    mnMatchesByProjectionLastFrame = nmatches;
+
     if(mbOnlyTracking)
     {
         mbVO = nmatchesMap<10;
         return nmatches>20;
     }
-    printf("matches %d\n", nmatchesMap);
 
     return nmatchesMap>=10;
 }
@@ -1235,7 +1237,8 @@ void Tracking::SearchLocalPoints()
         // If the camera has been relocalised recently, perform a coarser search
         if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
             th=5;
-        matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);//TODO read !!important
+        mnMatchesByProjectionMapPointCovFrames = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);//TODO read !!important
+        printf("==== n matches %d from local map \n", mnMatchesByProjectionMapPointCovFrames);
     }
 }
 

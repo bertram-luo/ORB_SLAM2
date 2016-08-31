@@ -86,6 +86,12 @@ protected:
     cv::Rect mtKeyTrackerObjectBox;
     int mtKeyTrackerIndex;
 
+    //for debug info
+    int mnMatchesByProjectionLastFrame;
+    int mnMatchesByProjectionMapPointCovFrames;
+
+    int mntMatchesByProjectionLastFrame;
+    int mntMatchesByProjectionMapPointCovFrames;
 };
 
 } //namespace ORB_SLAM

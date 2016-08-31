@@ -48,6 +48,8 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
 
     const bool bFactor = th!=1.0;
 
+        int n1 = 0;
+        int n2 = 0;
     for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++)
     {
         MapPoint* pMP = vpMapPoints[iMP];
@@ -79,14 +81,19 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
         int bestLevel2 = -1;
         int bestIdx =-1 ;
 
+
         // Get best and second matches with near keypoints
         for(vector<size_t>::const_iterator vit=vIndices.begin(), vend=vIndices.end(); vit!=vend; vit++)
         {
             const size_t idx = *vit;
 
-            if(F.mvpMapPoints[idx])
-                if(F.mvpMapPoints[idx]->Observations()>0)
+            if(F.mvpMapPoints[idx]){
+                n1++;
+                if(F.mvpMapPoints[idx]->Observations()>0){
+                    n2++;
                     continue;
+                }
+            }
 
             if(F.mvuRight[idx]>0)
             {
@@ -114,6 +121,7 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
             }
         }
 
+
         // Apply ratio to second match (only if best and second are in the same scale level)
         if(bestDist<=TH_HIGH)
         {
@@ -124,6 +132,7 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
             nmatches++;
         }
     }
+        printf("n1 : %d, n2 : %d\n", n1, n2);
 
     return nmatches;
 }

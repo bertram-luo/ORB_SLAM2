@@ -122,6 +122,9 @@ public:
     int mRadioMaxIndex;
     float mRadioMax;
 
+    //for debug
+    int mnMatchesByProjectionLastFrame;
+    int mnMatchesByProjectionMapPointCovFrames;
 protected:
 
     // Main tracking function. It is independent of the input sensor.
@@ -228,6 +231,8 @@ protected:
     int nframe;
     int tracking_start_frame_no;
     bool pause;
+
+
 };
 
 } //namespace ORB_SLAM
