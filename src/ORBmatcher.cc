@@ -45,11 +45,14 @@ ORBmatcher::ORBmatcher(float nnratio, bool checkOri): mfNNratio(nnratio), mbChec
 int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoints, const float th)
 {
     int nmatches=0;
+    int nboth = 0;
 
     const bool bFactor = th!=1.0;
-    F.mvbMapPointsMatchFromLocalMap.resize(F.mvpMapPoints.size(), false);
+
+    //printf(" Lm size: %lu lf size : %lu\n", F.mvbMapPointsMatchFromLocalMap.size(), F.mvbMapPointsMatchFromPreviousFrame.size());
     int n1 = 0;
     int n2 = 0;
+
     for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++)
     {
         MapPoint* pMP = vpMapPoints[iMP];
@@ -128,12 +131,23 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
             if(bestLevel==bestLevel2 && bestDist>mfNNratio*bestDist2)
                 continue;
 
+
             F.mvbMapPointsMatchFromLocalMap[bestIdx] = true;
-            F.mvpMapPoints[bestIdx]=pMP;
-            nmatches++;
+            if (F.mvbMapPointsMatchFromPreviousFrame[bestIdx] ){
+                nboth++;
+
+                bool m1 = F.mvbMapPointsMatchFromLocalMap[bestIdx];
+                bool m2 =  F.mvbMapPointsMatchFromPreviousFrame[bestIdx]  ;
+                //printf("both  %d! both %d !\n",m1,m2 );
+            }
+            else {
+            }
+                F.mvpMapPoints[bestIdx]=pMP;//TODO important! potentially wrong
+                nmatches++;
         }
     }
-        printf("n1 : %d, n2 : %d\n", n1, n2);
+        //printf("n1 : %d, n2 : %d\n", n1, n2);
+    printf("n both %d, nmatches %d\n", nboth, nmatches);
 
     return nmatches;
 }
@@ -166,7 +180,7 @@ bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,const cv::KeyPoin
     return dsqr<3.84*pKF2->mvLevelSigma2[kp2.octave];
 }
 
-int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPointMatches)
+int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPointMatches)//TODO check search with key frame
 {
     const vector<MapPoint*> vpMapPointsKF = pKF->GetMapPointMatches();
 
@@ -1341,7 +1355,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
     int nmatches = 0;
 
 
-    F.mvbMapPointsMatchFromPreviousFrame.resize(F.mvpMapPoints.size(), false);
+
 
     // Rotation Histogram (to check rotation consistency)
     vector<int> rotHist[HISTO_LENGTH];
@@ -1439,8 +1453,9 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
 
                 if(bestDist<=TH_HIGH)
                 {
+
                     CurrentFrame.mvpMapPoints[bestIdx2]=pMP;//TODO gotcha 
-                    F.mvbMapPointsMatchFromPreviousFrame[bestIdx2]=true;
+                    CurrentFrame.mvbMapPointsMatchFromPreviousFrame[bestIdx2]=true;
                     nmatches++;
 
                     if(mbCheckOrientation)

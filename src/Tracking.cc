@@ -273,6 +273,8 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     else
         mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
 
+    mCurrentFrame.mvbMapPointsMatchFromPreviousFrame.resize(mCurrentFrame.mvpMapPoints.size(), false);
+    mCurrentFrame.mvbMapPointsMatchFromLocalMap.resize(mCurrentFrame.mvpMapPoints.size(), false);
 
     nframe++;
     Track();
@@ -282,7 +284,6 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 
 void Tracking::Track()
 {
-
 
     if (nframe >= tracking_start_frame_no){
         if (nframe == tracking_start_frame_no){
@@ -483,7 +484,7 @@ void Tracking::Track()
 
             // Check if we need to insert a new keyframe
             if(NeedNewKeyFrame()){
-                printf("new key frame inserted\n");
+                //printf("new key frame inserted\n");
                 CreateNewKeyFrame();
             }
 
@@ -785,8 +786,9 @@ void Tracking::CheckReplacedInLastFrame()
 }
 
 
-bool Tracking::TrackReferenceKeyFrame()
+bool Tracking::TrackReferenceKeyFrame()//TODO check reference key frame
 {
+    printf("===tracking with reference key frame\n");
     // Compute Bag of Words vector
     mCurrentFrame.ComputeBoW();
 
@@ -950,7 +952,7 @@ bool Tracking::TrackWithMotionModel()
     }    
 
 
-    printf("N:%d nmatches:%d, nmatchesMap%d, less %d\n", mCurrentFrame.N, nmatches, nmatchesMap, nmatches - nmatchesMap);
+    //printf("N:%d nmatches:%d, nmatchesMap%d, less %d\n", mCurrentFrame.N, nmatches, nmatchesMap, nmatches - nmatchesMap);
 
     mnMatchesByProjectionLastFrame = nmatches;
 

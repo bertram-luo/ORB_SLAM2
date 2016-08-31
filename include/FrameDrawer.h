@@ -56,7 +56,7 @@ protected:
     cv::Mat mIm;
     int N;
     vector<cv::KeyPoint> mvCurrentKeys;
-    vector<bool> mvbMap, mvbVO;
+    vector<int> mvbMap, mvbVO;
     bool mbOnlyTracking;
     int mnTracked, mnTrackedVO;
     vector<cv::KeyPoint> mvIniKeys;
@@ -88,13 +88,19 @@ protected:
 
     //for debug info
     int mnMatchesByProjectionLastFrame;
-    int mnMatchesByProjectionMapPointCovFrames;
-
     int mntMatchesByProjectionLastFrame;
+
+    int mnMatchesByProjectionMapPointCovFrames;
     int mntMatchesByProjectionMapPointCovFrames;
 
-    std::vector<bool> mvbMapPointsMatchFromLocalMap;
-    std::vector<bool> mvbtMapPointsMatchFromLocalMap;
+    vector<bool> mvbMapPointsMatchFromLocalMap;
+    vector<bool> mvbtMapPointsMatchFromLocalMap;
+    
+    vector<bool> mvbMapPointsMatchFromPreviousFrame;
+    vector<bool> mvbtMapPointsMatchFromPreviousFrame;
+
+    int mntMatchesBoth;
+    int mnMatchesBoth;
 };
 
 } //namespace ORB_SLAM

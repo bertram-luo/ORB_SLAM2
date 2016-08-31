@@ -41,7 +41,7 @@ cv::Mat FrameDrawer::DrawFrame()
     vector<cv::KeyPoint> vIniKeys; // Initialization: KeyPoints in reference frame
     vector<int> vMatches; // Initialization: correspondeces with reference keypoints
     vector<cv::KeyPoint> vCurrentKeys; // KeyPoints in current frame
-    vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
+    vector<int> vbVO, vbMap; // Tracked MapPoints in current frame
     int state; // Tracking state
 
 
@@ -61,7 +61,8 @@ cv::Mat FrameDrawer::DrawFrame()
         mntMatchesByProjectionLastFrame = mnMatchesByProjectionLastFrame;
         mntMatchesByProjectionMapPointCovFrames = mnMatchesByProjectionMapPointCovFrames;
 
-        mvbMapPointsMatchFromLocalMap = mvbtMapPointsMatchFromLocalMap;
+        mvbtMapPointsMatchFromLocalMap = mvbMapPointsMatchFromLocalMap;
+        mvbtMapPointsMatchFromPreviousFrame = mvbMapPointsMatchFromPreviousFrame ;
 
         state=mState;
         if(mState==Tracking::SYSTEM_NOT_READY)
@@ -91,6 +92,16 @@ cv::Mat FrameDrawer::DrawFrame()
         cvtColor(im,im,CV_GRAY2BGR);
 
     //Draw
+    //
+    mntMatchesBoth = 0;
+        mnMatchesBoth = 0;
+    for(int i = 0; i <mvbtMapPointsMatchFromPreviousFrame.size(); i++ ){
+            bool m1 = mvbtMapPointsMatchFromPreviousFrame[i];
+            bool m2 = mvbtMapPointsMatchFromLocalMap[i];
+            if (m1 && m2){
+                mntMatchesBoth++;
+            }
+    }
     if(state==Tracking::NOT_INITIALIZED) //INITIALIZING
     {
         for(unsigned int i=0; i<vMatches.size(); i++)
@@ -109,8 +120,15 @@ cv::Mat FrameDrawer::DrawFrame()
         const float r = 5;
         for(int i=0;i<N;i++)
         {
+
+
             if(vbVO[i] || vbMap[i])
             {
+            bool m1 = mvbtMapPointsMatchFromPreviousFrame[i];
+            bool m2 = mvbtMapPointsMatchFromLocalMap[i];
+            if (m1 && m2){
+                mnMatchesBoth++;
+            }
                 cv::Point2f pt1,pt2;
                 pt1.x=vCurrentKeys[i].pt.x-r;
                 pt1.y=vCurrentKeys[i].pt.y-r;
@@ -121,9 +139,15 @@ cv::Mat FrameDrawer::DrawFrame()
                 if(vbMap[i])
                 {
 
-                    if (mvbMapPointsMatchFromLocalMap[i]){
-                        cv::rectangle(im,pt1,pt2,cv::Scalar(0,0, 255));
-                        cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0,255,0),-1);
+                    if (mvbtMapPointsMatchFromLocalMap[i]){
+                        if (mvbtMapPointsMatchFromPreviousFrame[i]){
+                            mntMatchesBoth++;
+                            cv::rectangle(im,pt1,pt2,cv::Scalar(0,0, 255));
+                            cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0, 0, 255),-1);
+                        } else {
+                            cv::rectangle(im,pt1,pt2,cv::Scalar(255,0, 0));
+                            cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(255,0,0),-1);
+                        }
                     
                     } else {
                         cv::rectangle(im,pt1,pt2,cv::Scalar(0,255,0));
@@ -189,10 +213,14 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
     cv::Size textSize = cv::getTextSize(s.str(),cv::FONT_HERSHEY_PLAIN,1,1,&baseline);
 
     stringstream match_info_s;
-    match_info_s << "match with LF:" << mntMatchesByProjectionLastFrame
-        << "Local Map:"<< mntMatchesByProjectionMapPointCovFrames
-        <<"| ratio naive:"<< (float)mntMatchesByProjectionMapPointCovFrames/mntMatchesByProjectionLastFrame 
-        << "|ratio finally" <<(float)mntMatchesByProjectionMapPointCovFrames/mnTracked;
+    match_info_s 
+        <<"|LM nai:"<< (int)((float)mntMatchesByProjectionMapPointCovFrames/mntMatchesByProjectionLastFrame * 100) <<"%"
+        << "|LM fin" <<(int)((float)mntMatchesByProjectionMapPointCovFrames/mnTracked * 100) << "%"
+        <<"|BOTH fin" << (int)((float)mntMatchesBoth/mnTracked * 100) << "%"
+        << "|BOTH" << mntMatchesBoth
+        << ":"<<mnMatchesBoth
+        << "|mth LM:"<< mntMatchesByProjectionMapPointCovFrames
+        << "|mth LF:" << mntMatchesByProjectionLastFrame;
 
 
     int rowSize = textSize.height + 10;
@@ -211,8 +239,8 @@ void FrameDrawer::Update(Tracking *pTracker)
     pTracker->mImGray.copyTo(mIm);
     mvCurrentKeys=pTracker->mCurrentFrame.mvKeys;
     N = mvCurrentKeys.size();
-    mvbVO = vector<bool>(N,false);
-    mvbMap = vector<bool>(N,false);
+    mvbVO = vector<int>(N,false);
+    mvbMap = vector<int>(N,false);
     mbOnlyTracking = pTracker->mbOnlyTracking;
 
 
@@ -232,6 +260,7 @@ void FrameDrawer::Update(Tracking *pTracker)
     mnMatchesByProjectionMapPointCovFrames = pTracker->mnMatchesByProjectionMapPointCovFrames;
 
     mvbMapPointsMatchFromLocalMap = pTracker->mCurrentFrame.mvbMapPointsMatchFromLocalMap;
+    mvbMapPointsMatchFromPreviousFrame = pTracker->mCurrentFrame.mvbMapPointsMatchFromPreviousFrame;
 
     if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)
     {
@@ -240,15 +269,22 @@ void FrameDrawer::Update(Tracking *pTracker)
     }
     else if(pTracker->mLastProcessedState==Tracking::OK)
     {
+
+
         for(int i=0;i<N;i++)
         {
+
+
             MapPoint* pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
             if(pMP)
             {
                 if(!pTracker->mCurrentFrame.mvbOutlier[i])
                 {
-                    if(pMP->Observations()>0)
+
+
+                    if(pMP->Observations()>0){
                         mvbMap[i]=true;
+                    }
                     else
                         mvbVO[i]=true;
                 }

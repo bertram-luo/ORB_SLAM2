@@ -1,5 +1,5 @@
 #include "ObjectTracker.h"
-#define MAX_TRACKERS (3)
+#define MAX_TRACKERS (30)
 
 ObjectTracker::ObjectTracker() :
     mBenchmarkRadioMaxIndex(0),
@@ -55,7 +55,7 @@ void ObjectTracker::processFrame(cv::Mat& _frame, cv::Rect& _objectBox, int& rad
             }
         }
 
-        if (mKeyTrackerRadioMax < 0){
+        if (mKeyTrackerRadioMax < -1500){// IDEA: fixed value is bad, could I make it auto adjusted? CT may do bad in log ratio
             if (mnTrackers >= MAX_TRACKERS){
                 //TODO bug of libc mem management module?
                 delete *(mvpTrackers.begin() + (int)(MAX_TRACKERS/2));
@@ -75,6 +75,12 @@ void ObjectTracker::processFrame(cv::Mat& _frame, cv::Rect& _objectBox, int& rad
             mvRadioMaxes[mnTrackers] = 0;
             mvpTrackers[mnTrackers]->init(_frame, mvObjectBoxes[mnTrackers]);
             mvpTrackers[mnTrackers]->processFrameNotUpdateModel(_frame, mvObjectBoxes[mnTrackers], mvRadioMaxIndexes[mnTrackers], mvRadioMaxes[mnTrackers]);
+
+
+            mKeyTrackerRadioMax = mvRadioMaxes[mnTrackers];
+            mKeyTrackerRadioMaxIndex = mvRadioMaxIndexes[mnTrackers];
+            mKeyTrackerObjectBox = mvObjectBoxes[mnTrackers];
+            mKeyTrackerIndex = mnTrackers;
         
         }
     } else {
