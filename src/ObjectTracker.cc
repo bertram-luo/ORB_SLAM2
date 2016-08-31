@@ -49,7 +49,7 @@ void ObjectTracker::processFrame(cv::Mat& _frame, cv::Rect& _objectBox, int& rad
             mvpTrackers[i]->processFrameNotUpdateModel(_frame, mvObjectBoxes[i], mvRadioMaxIndexes[i], mvRadioMaxes[i]);
             if (mvRadioMaxes[i] > mKeyTrackerRadioMax){
                 mKeyTrackerRadioMax = mvRadioMaxes[i];
-                mKeyTrackerRadioMaxIndex = i;
+                mKeyTrackerRadioMaxIndex = mvRadioMaxIndexes[i];
                 mKeyTrackerObjectBox = mvObjectBoxes[i];
                 mKeyTrackerIndex = i;
             }
