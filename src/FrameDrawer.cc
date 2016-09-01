@@ -38,7 +38,7 @@ FrameDrawer::FrameDrawer(Map* pMap):
     mtNewAlgoTrackerRadioMaxIndex(0),
     mNewAlgoTrackerRadioMax(0),
     mtNewAlgoTrackerRadioMax(0),
-    mAreaPoints(0),
+    mPointsArea(0),
     mtAreaPoints(0),
     mArea(0),
     mtArea(0),
@@ -95,7 +95,7 @@ void FrameDrawer::DrawFrame(cv::Mat& m1, cv::Mat& m2, cv::Mat& m3)
         mtNewAlgoTrackerRadioMaxIndex = mNewAlgoTrackerRadioMaxIndex;
         mtNewAlgoTrackerRadioMax = mNewAlgoTrackerRadioMax;
 
-        mtAreaPoints = mAreaPoints;
+        mtAreaPoints = mPointsArea;
         mtArea = mArea;
 
         mtBefore = mBefore;
@@ -308,7 +308,7 @@ void FrameDrawer::Update(Tracking *pTracker)
     mNewAlgoTrackerRadioMaxIndex = pTracker->mpObjectTracker->mNewAlgoTrackerRadioMaxIndex;
     mNewAlgoTrackerRadioMax = pTracker->mpObjectTracker->mNewAlgoTrackerRadioMax;
 
-    mAreaPoints = pTracker->mpObjectTracker->mAreaPoints;
+    mPointsArea = pTracker->mpObjectTracker->mPointsArea;
     mArea = pTracker->mpObjectTracker->mArea;
 
 

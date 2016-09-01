@@ -436,17 +436,20 @@ void Tracking::Track()
 
 
         if (nframe >= tracking_start_frame_no){
-            waitKey(0);
             if (nframe == tracking_start_frame_no){
                 mpObjectTracker->init(mImGray, mObjectBox); 
+            } else {
+                mpObjectTracker->processFrame(mImGray, mCurrentFrame);
             }
-            mpObjectTracker->processFrame(mImGray, mCurrentFrame);
-
-        //waitKey(0);
+            mpFrameDrawer->Update(this);
+            if (nframe >= tracking_start_frame_no + 200){
+                waitKey(0);
+            }
+        } else {
+            mpFrameDrawer->Update(this);
         }
 
         // Update drawer
-        mpFrameDrawer->Update(this);
 
         // If tracking were good, check if we insert a keyframe
         if(bOK)

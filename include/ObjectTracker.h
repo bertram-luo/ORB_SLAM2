@@ -12,6 +12,8 @@ public:
 public:
     void processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
 	void init(cv::Mat& _frame, cv::Rect& _objectBox);
+    void newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
+    void newAlgoTrackingAreaAndNormalDirection(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
 
 private:
     std::vector<CompressiveTracker*> mvpTrackers;
@@ -20,7 +22,7 @@ private:
 
     void processFrame2(cv::Mat& _frame, cv::Rect& _objectBox, int& radioMaxIndex, float& radioMax,ORB_SLAM2::Frame _currentFrame);
 
-    void calcPointArea(ORB_SLAM2::Frame _currentFrame);
+    void calcPointAreaAndDirection(ORB_SLAM2::Frame _currentFrame, int filter = 1);
 
 public:
 
@@ -35,8 +37,32 @@ public:
     cv::Mat mBefore;
     cv::Mat mAfter;
 
-    float mAreaPoints;
+    float mPointsArea;
     float mArea;
+    float mPintsX;
+    float mPointsY;
+
+
+    int npoints;
+    float m10XLessYLess;
+    float m01XLessYLess;
+    int nXLessYLess;
+
+
+    float m10XLessYMore;
+    float m01XLessYMore;
+    int nXLessYMore;
+
+
+    float m10XMoreYLess;
+    float m01XMoreYLess;
+    int nXMoreYLess;
+
+
+    float m10XMoreYMore;
+    float m01XMoreYMore;
+    int nXMoreYMore;
+
 
     std::vector<int> mvRadioMaxIndexes;
     std::vector<float> mvRadioMaxes;

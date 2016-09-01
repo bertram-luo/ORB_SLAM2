@@ -81,7 +81,7 @@ protected:
     float mNewAlgoTrackerRadioMax;
     float mtNewAlgoTrackerRadioMax;
 
-    float mAreaPoints;
+    float mPointsArea;
     float mtAreaPoints;
     float mArea;
     float mtArea;
