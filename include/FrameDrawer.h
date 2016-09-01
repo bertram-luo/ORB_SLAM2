@@ -68,22 +68,35 @@ protected:
     std::mutex mMutex;
 
     cv::Rect mBenchmarkObjectBox;
-    int mBenchmarkRadioMaxIndex;
-    float mBenchmarkRadioMax;
-
-    int mKeyTrackerRadioMaxIndex;
-    float mKeyTrackerRadioMax;
-    cv::Rect mKeyTrackerObjectBox;
-    int mKeyTrackerIndex;
-
-
     cv::Rect mtBenchmarkObjectBox;
+    int mBenchmarkRadioMaxIndex;
     int mtBenchmarkRadioMaxIndex;
+    float mBenchmarkRadioMax;
     float mtBenchmarkRadioMax;
 
+    cv::Rect mNewAlgoTrackerObjectBox;
+    cv::Rect mtNewAlgoTrackerObjectBox;
+    int mNewAlgoTrackerRadioMaxIndex;
+    int mtNewAlgoTrackerRadioMaxIndex;
+    float mNewAlgoTrackerRadioMax;
+    float mtNewAlgoTrackerRadioMax;
+
+    float mAreaPoints;
+    float mtAreaPoints;
+    float mArea;
+    float mtArea;
+
+    
+
+
+
+    int mKeyTrackerRadioMaxIndex;
     int mtKeyTrackerRadioMaxIndex;
+    float mKeyTrackerRadioMax;
     float mtKeyTrackerRadioMax;
+    cv::Rect mKeyTrackerObjectBox;
     cv::Rect mtKeyTrackerObjectBox;
+    int mKeyTrackerIndex;
     int mtKeyTrackerIndex;
 
     //for debug info

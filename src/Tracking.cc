@@ -285,15 +285,6 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 void Tracking::Track()
 {
 
-    if (nframe >= tracking_start_frame_no){
-        if (nframe == tracking_start_frame_no){
-            mpObjectTracker->init(mImGray, mObjectBox); 
-        }
-        
-        mpObjectTracker->processFrame(mImGray, mObjectBox, mRadioMaxIndex, mRadioMax);
-
-        //waitKey(0);
-    }
 
     if(mState==NO_IMAGES_YET)
     {
@@ -442,6 +433,17 @@ void Tracking::Track()
             mState = OK;
         else
             mState=LOST;
+
+
+        if (nframe >= tracking_start_frame_no){
+            waitKey(0);
+            if (nframe == tracking_start_frame_no){
+                mpObjectTracker->init(mImGray, mObjectBox); 
+            }
+            mpObjectTracker->processFrame(mImGray, mCurrentFrame);
+
+        //waitKey(0);
+        }
 
         // Update drawer
         mpFrameDrawer->Update(this);
@@ -1244,7 +1246,7 @@ void Tracking::SearchLocalPoints()
         if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
             th=5;
         mnMatchesByProjectionMapPointCovFrames = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);//TODO read !!important
-        printf("n last seen: %d====nToMatch:%d n matches %d from local map \n",nLastSeen, nToMatch, mnMatchesByProjectionMapPointCovFrames);
+        //printf("n last seen: %d====nToMatch:%d n matches %d from local map \n",nLastSeen, nToMatch, mnMatchesByProjectionMapPointCovFrames);
     }
 }
 

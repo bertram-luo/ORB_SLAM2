@@ -61,4 +61,5 @@ public:
     void processFrameNotUpdateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax);
 	void init(Mat& _frame, Rect& _objectBox);
     void fullImageScan(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax);
+    void updateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax);
 };

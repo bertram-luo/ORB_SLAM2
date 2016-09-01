@@ -29,7 +29,44 @@
 namespace ORB_SLAM2
 {
 
-FrameDrawer::FrameDrawer(Map* pMap):mpMap(pMap)
+FrameDrawer::FrameDrawer(Map* pMap):
+    mpMap(pMap),
+
+    mNewAlgoTrackerObjectBox(cv::Rect(0, 0, 0, 0)),
+    mtNewAlgoTrackerObjectBox(cv::Rect(0, 0, 0, 0)),
+    mNewAlgoTrackerRadioMaxIndex(0),
+    mtNewAlgoTrackerRadioMaxIndex(0),
+    mNewAlgoTrackerRadioMax(0),
+    mtNewAlgoTrackerRadioMax(0),
+    mAreaPoints(0),
+    mtAreaPoints(0),
+    mArea(0),
+    mtArea(0),
+
+    mKeyTrackerRadioMaxIndex(0),
+    mtKeyTrackerRadioMaxIndex(0),
+    mKeyTrackerRadioMax(0),
+    mtKeyTrackerRadioMax(0),
+    mKeyTrackerObjectBox(cv::Rect(0, 0, 0, 0)),
+    mtKeyTrackerObjectBox(cv::Rect(0, 0, 0, 0)),
+    mKeyTrackerIndex(0),
+    mtKeyTrackerIndex(0),
+
+    //for debug info
+    mnMatchesByProjectionLastFrame(0),
+    mntMatchesByProjectionLastFrame(0),
+
+    mnMatchesByProjectionMapPointCovFrames(0),
+    mntMatchesByProjectionMapPointCovFrames(0),
+
+    //vector<bool> mvbMapPointsMatchFromLocalMap,
+    //vector<bool> mvbtMapPointsMatchFromLocalMap,
+    
+    //vector<bool> mvbMapPointsMatchFromPreviousFrame,
+    //vector<bool> mvbtMapPointsMatchFromPreviousFrame,
+
+    mntMatchesBoth(0),
+    mnMatchesBoth(0)
 {
     mState=Tracking::SYSTEM_NOT_READY;
     mIm = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
@@ -53,10 +90,18 @@ cv::Mat FrameDrawer::DrawFrame()
         mtBenchmarkRadioMaxIndex = mBenchmarkRadioMaxIndex;
         mtBenchmarkRadioMax = mBenchmarkRadioMax;
 
-        mtKeyTrackerRadioMaxIndex = mKeyTrackerRadioMaxIndex;
-        mtKeyTrackerRadioMax = mKeyTrackerRadioMax;
-        mtKeyTrackerObjectBox = mKeyTrackerObjectBox;
-        mtKeyTrackerIndex = mKeyTrackerIndex;
+
+        mtNewAlgoTrackerObjectBox = mNewAlgoTrackerObjectBox;
+        mtNewAlgoTrackerRadioMaxIndex = mNewAlgoTrackerRadioMaxIndex;
+        mtNewAlgoTrackerRadioMax = mNewAlgoTrackerRadioMax;
+
+        mtAreaPoints = mAreaPoints;
+        mtArea = mArea;
+
+        //mtKeyTrackerRadioMaxIndex = mKeyTrackerRadioMaxIndex;
+        //mtKeyTrackerRadioMax = mKeyTrackerRadioMax;
+        //mtKeyTrackerObjectBox = mKeyTrackerObjectBox;
+        //mtKeyTrackerIndex = mKeyTrackerIndex;
 
         mntMatchesByProjectionLastFrame = mnMatchesByProjectionLastFrame;
         mntMatchesByProjectionMapPointCovFrames = mnMatchesByProjectionMapPointCovFrames;
@@ -168,7 +213,7 @@ cv::Mat FrameDrawer::DrawFrame()
 
     /*start*** support for tracking algorithm**/
     rectangle(im, mtBenchmarkObjectBox, Scalar(200, 0, 0), 2);
-    rectangle(im, mtKeyTrackerObjectBox, Scalar(0, 0, 200), 2);
+    rectangle(im, mtNewAlgoTrackerObjectBox, Scalar(0, 0, 200), 2);
     /*end**** support for tracking algorithm**/
     cv::Mat imWithInfo;
     DrawTextInfo(im,state, imWithInfo);
@@ -208,7 +253,8 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 
     stringstream object_tracking_s;
     object_tracking_s << "Index" << mtBenchmarkRadioMaxIndex << "Max" << mBenchmarkRadioMax ;
-    object_tracking_s << "| index " << mtKeyTrackerIndex << " Index " << mtKeyTrackerRadioMaxIndex << "Max" << mtKeyTrackerRadioMax;
+    object_tracking_s << "|area points:" << mtAreaPoints <<"area"<<mtArea;
+    //object_tracking_s << "| index " << mtKeyTrackerIndex << " Index " << mtKeyTrackerRadioMaxIndex << "Max" << mtKeyTrackerRadioMax;
     int baseline=0;
     cv::Size textSize = cv::getTextSize(s.str(),cv::FONT_HERSHEY_PLAIN,1,1,&baseline);
 
@@ -249,10 +295,19 @@ void FrameDrawer::Update(Tracking *pTracker)
     mBenchmarkRadioMaxIndex = pTracker->mpObjectTracker->mBenchmarkRadioMaxIndex;
     mBenchmarkRadioMax = pTracker->mpObjectTracker->mBenchmarkRadioMax;
 
-    mKeyTrackerRadioMaxIndex = pTracker->mpObjectTracker->mKeyTrackerRadioMaxIndex;
-    mKeyTrackerRadioMax = pTracker->mpObjectTracker->mKeyTrackerRadioMax;
-    mKeyTrackerObjectBox = pTracker->mpObjectTracker->mKeyTrackerObjectBox;
-    mKeyTrackerIndex = pTracker->mpObjectTracker->mKeyTrackerIndex;
+
+
+    mNewAlgoTrackerObjectBox = pTracker->mpObjectTracker->mNewAlgoTrackerObjectBox;
+    mNewAlgoTrackerRadioMaxIndex = pTracker->mpObjectTracker->mNewAlgoTrackerRadioMaxIndex;
+    mNewAlgoTrackerRadioMax = pTracker->mpObjectTracker->mNewAlgoTrackerRadioMax;
+
+    mAreaPoints = pTracker->mpObjectTracker->mAreaPoints;
+    mArea = pTracker->mpObjectTracker->mArea;
+
+    //mKeyTrackerRadioMaxIndex = pTracker->mpObjectTracker->mKeyTrackerRadioMaxIndex;
+    //mKeyTrackerRadioMax = pTracker->mpObjectTracker->mKeyTrackerRadioMax;
+    //mKeyTrackerObjectBox = pTracker->mpObjectTracker->mKeyTrackerObjectBox;
+    //mKeyTrackerIndex = pTracker->mpObjectTracker->mKeyTrackerIndex;
 
 
     // for debug;

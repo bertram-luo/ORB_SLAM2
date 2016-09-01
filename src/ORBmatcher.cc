@@ -141,13 +141,13 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
                 //printf("both  %d! both %d !\n",m1,m2 );
             }
             else {
-            }
                 F.mvpMapPoints[bestIdx]=pMP;//TODO important! potentially wrong
                 nmatches++;
+            }
         }
     }
         //printf("n1 : %d, n2 : %d\n", n1, n2);
-    printf("n both %d, nmatches %d\n", nboth, nmatches);
+    //printf("n both %d, nmatches %d\n", nboth, nmatches);
 
     return nmatches;
 }

@@ -287,6 +287,18 @@ void CompressiveTracker::processFrameNotUpdateModel(Mat& _frame, Rect& _objectBo
 	_objectBox = detectBox[radioMaxIndex];
 }
 
+
+void CompressiveTracker::updateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax){
+
+	sampleRect(_frame, _objectBox, rOuterPositive, 0.0, 1000000, samplePositiveBox);
+	sampleRect(_frame, _objectBox, rSearchWindow*1.5, rOuterPositive+4.0, 100, sampleNegativeBox);
+	
+	getFeatureValue(imageIntegral, samplePositiveBox, samplePositiveFeatureValue);
+	getFeatureValue(imageIntegral, sampleNegativeBox, sampleNegativeFeatureValue);
+	classifierUpdate(samplePositiveFeatureValue, muPositive, sigmaPositive, learnRate);
+	classifierUpdate(sampleNegativeFeatureValue, muNegative, sigmaNegative, learnRate);
+}
+
 void CompressiveTracker::fullImageScan(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax){
 	// predict
 	sampleRect(_frame, _objectBox, rSearchWindow*10,detectBox);
