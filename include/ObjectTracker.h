@@ -10,9 +10,9 @@ public:
 	~ObjectTracker(void);
 
 public:
-    void processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
+    bool processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
 	void init(cv::Mat& _frame, cv::Rect& _objectBox);
-    void newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
+    bool newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
     void newAlgoTrackingAreaAndNormalDirection(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
 
 private:
@@ -42,26 +42,15 @@ public:
     float mPintsX;
     float mPointsY;
 
+    int n01YLess;
+    int n01YMore;
+    int n10XLess;
+    int n10XMore;
 
-    int npoints;
-    float m10XLessYLess;
-    float m01XLessYLess;
-    int nXLessYLess;
-
-
-    float m10XLessYMore;
-    float m01XLessYMore;
-    int nXLessYMore;
-
-
-    float m10XMoreYLess;
-    float m01XMoreYLess;
-    int nXMoreYLess;
-
-
-    float m10XMoreYMore;
-    float m01XMoreYMore;
-    int nXMoreYMore;
+    float m01YLess;
+    float m01YMore;
+    float m10XLess;
+    float m10XMore;
 
 
     std::vector<int> mvRadioMaxIndexes;
