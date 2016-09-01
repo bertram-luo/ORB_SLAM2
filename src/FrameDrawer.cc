@@ -72,7 +72,7 @@ FrameDrawer::FrameDrawer(Map* pMap):
     mIm = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
 }
 
-cv::Mat FrameDrawer::DrawFrame()
+void FrameDrawer::DrawFrame(cv::Mat& m1, cv::Mat& m2, cv::Mat& m3)
 {
     cv::Mat im;
     vector<cv::KeyPoint> vIniKeys; // Initialization: KeyPoints in reference frame
@@ -97,6 +97,9 @@ cv::Mat FrameDrawer::DrawFrame()
 
         mtAreaPoints = mAreaPoints;
         mtArea = mArea;
+
+        mtBefore = mBefore;
+        mtAfter = mAfter;
 
         //mtKeyTrackerRadioMaxIndex = mKeyTrackerRadioMaxIndex;
         //mtKeyTrackerRadioMax = mKeyTrackerRadioMax;
@@ -218,7 +221,11 @@ cv::Mat FrameDrawer::DrawFrame()
     cv::Mat imWithInfo;
     DrawTextInfo(im,state, imWithInfo);
 
-    return imWithInfo;
+
+    imWithInfo.copyTo(m1);
+    mtBefore.copyTo(m2);
+    mtAfter.copyTo(m3);
+    //return imWithInfo;
 }
 
 
@@ -303,6 +310,10 @@ void FrameDrawer::Update(Tracking *pTracker)
 
     mAreaPoints = pTracker->mpObjectTracker->mAreaPoints;
     mArea = pTracker->mpObjectTracker->mArea;
+
+
+    mBefore = pTracker->mpObjectTracker->mBefore;
+    mAfter= pTracker->mpObjectTracker->mAfter;
 
     //mKeyTrackerRadioMaxIndex = pTracker->mpObjectTracker->mKeyTrackerRadioMaxIndex;
     //mKeyTrackerRadioMax = pTracker->mpObjectTracker->mKeyTrackerRadioMax;

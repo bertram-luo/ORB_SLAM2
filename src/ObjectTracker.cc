@@ -62,7 +62,6 @@ void ObjectTracker::processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame
     mArea = mNewAlgoTrackerObjectBox.width * mNewAlgoTrackerObjectBox.height;
     float radius = sqrt(pow((float)(x2-x1)/2,2) + pow((float)(y2-y1)/2, 2));
 
-    printf("calculating mAreaPoints\n");
     for(int i = 0; i < (int)_currentFrame.mvpMapPoints.size(); ++i){
         int x = _currentFrame.mvKeysUn[i].pt.x;
         int y = _currentFrame.mvKeysUn[i].pt.y;
@@ -81,7 +80,6 @@ void ObjectTracker::processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame
             }
         }
     }
-    printf("calculating mAreaPoints done\n");
 
     printf("mAreaPoints %f, area %f\n", mAreaPoints, mArea);
     if (mAreaPoints > mArea * 0.1){
@@ -91,31 +89,29 @@ void ObjectTracker::processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame
         Size sz(cvRound((float)_frame.cols*scale), cvRound((float)_frame.rows*scale));
         resize(_frame, resized_frame, sz,0, 0,INTER_LINEAR);
 
+        printf("%f scale factor\n", scale);
+        printf("[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
         mNewAlgoTrackerObjectBox.x = cvRound((float)mNewAlgoTrackerObjectBox.x * scale);//use oriObjectBox;
-        mNewAlgoTrackerObjectBox.y = cvRound((float)mNewAlgoTrackerObjectBox.x * scale);
+        mNewAlgoTrackerObjectBox.y = cvRound((float)mNewAlgoTrackerObjectBox.y * scale);
 
-        cv::Mat tmp;
-        resized_frame.copyTo(tmp);
+        resized_frame.copyTo(mBefore);
         cv::Point pt1(mNewAlgoTrackerObjectBox.x,mNewAlgoTrackerObjectBox.y);
         cv::Point pt2(pt1.x + mNewAlgoTrackerObjectBox.width, pt1.y+mNewAlgoTrackerObjectBox.height);
-        rectangle(tmp, pt1,pt2,cv::Scalar(0,0, 255));
-        imshow("before",tmp);
-        waitKey(1);
+        rectangle(mBefore, pt1,pt2,cv::Scalar(0,0, 255));
+        printf("[%d, %d, %d, %d]\n", pt1.x, pt1.y, pt2.x - pt1.x, pt2.y - pt1.y);
 
         mpNewAlgoTracker->processFrameNotUpdateModel(_frame, mNewAlgoTrackerObjectBox , mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax);
         mNewAlgoTrackerObjectBox.x = cvRound((float)mNewAlgoTrackerObjectBox.x / scale);
         mNewAlgoTrackerObjectBox.y = cvRound((float)mNewAlgoTrackerObjectBox.y / scale);
         mNewAlgoTrackerObjectBox.width = cvRound((float)mNewAlgoTrackerObjectBox.width / scale);
         mNewAlgoTrackerObjectBox.height = cvRound((float)mNewAlgoTrackerObjectBox.height / scale);
+        printf("[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
 
 
-        cv::Mat tmp2;
-        _frame.copyTo(tmp2);
+        _frame.copyTo(mAfter);
         cv::Point pt3(mNewAlgoTrackerObjectBox.x,mNewAlgoTrackerObjectBox.y);
         cv::Point pt4(pt3.x + mNewAlgoTrackerObjectBox.width, pt3.y+mNewAlgoTrackerObjectBox.height);
-        rectangle(tmp2, pt3,pt4,cv::Scalar(0,0, 255));
-        imshow("after",tmp2);
-        waitKey(1);
+        rectangle(mAfter, pt3,pt4,cv::Scalar(0,0, 255));
 
         mpNewAlgoTracker->init(_frame, mNewAlgoTrackerObjectBox);
     } else {

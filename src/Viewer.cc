@@ -133,8 +133,16 @@ void Viewer::Run()
 
         pangolin::FinishFrame();
 
-        cv::Mat im = mpFrameDrawer->DrawFrame();
+        cv::Mat im;
+        cv::Mat im2;
+        cv::Mat im3;
+        mpFrameDrawer->DrawFrame(im, im2, im3);
+
         cv::imshow("ORB-SLAM2: Current Frame",im);
+        if (im2.cols > 0)
+            cv::imshow("before",im2);
+        if (im3.cols > 0)
+            cv::imshow("after",im3);
         cv::waitKey(mT);
 
         if(menuReset)
