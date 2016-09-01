@@ -20,6 +20,8 @@ private:
 
     void processFrame2(cv::Mat& _frame, cv::Rect& _objectBox, int& radioMaxIndex, float& radioMax,ORB_SLAM2::Frame _currentFrame);
 
+    void calcPointArea(ORB_SLAM2::Frame _currentFrame);
+
 public:
 
     int mBenchmarkRadioMaxIndex;

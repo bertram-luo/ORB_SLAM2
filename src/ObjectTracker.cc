@@ -52,37 +52,15 @@ void ObjectTracker::processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame
 
     mpBenchmarkTracker->processFrame(_frame, mBenchmarkObjectBox , mBenchmarkRadioMaxIndex, mBenchmarkRadioMax);
 
+
+
     mpNewAlgoTracker->processFrameNotUpdateModel(_frame, mNewAlgoTrackerObjectBox , mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax);
 
-    int x1 = mNewAlgoTrackerObjectBox.x;
-    int y1 = mNewAlgoTrackerObjectBox.y;
-    int x2 = x1 + mNewAlgoTrackerObjectBox.width;
-    int y2 = y1 + mNewAlgoTrackerObjectBox.height;
-    mAreaPoints =0;
-    mArea = mNewAlgoTrackerObjectBox.width * mNewAlgoTrackerObjectBox.height;
-    float radius = sqrt(pow((float)(x2-x1)/2,2) + pow((float)(y2-y1)/2, 2));
 
-    for(int i = 0; i < (int)_currentFrame.mvpMapPoints.size(); ++i){
-        int x = _currentFrame.mvKeysUn[i].pt.x;
-        int y = _currentFrame.mvKeysUn[i].pt.y;
-        ORB_SLAM2::MapPoint* pMP = _currentFrame.mvpMapPoints[i];
-        if(pMP)
-        {
-            if(!_currentFrame.mvbOutlier[i])
-            {
-                if(pMP->Observations()>0){
-                    if ( x >= x1 && x <= x2 && y >= y1 && y<=y2){
-                        float dist = sqrt(pow((x - (float)(x1+x2)/2),2) + pow((y - (float)(y1+y2)/2), 2));
-                        float s = 1 - dist/radius;
-                        mAreaPoints += 400 * s;
-                    }
-                }
-            }
-        }
-    }
+    calcPointArea(_currentFrame);
 
     printf("mAreaPoints %f, area %f\n", mAreaPoints, mArea);
-    if (mAreaPoints > mArea * 0.1){
+    if (mAreaPoints > mArea * 0.2){
         cv::Mat resized_frame;
 
         float scale = sqrt((float)mArea / (mArea - mAreaPoints));
@@ -91,8 +69,8 @@ void ObjectTracker::processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame
 
         printf("%f scale factor\n", scale);
         printf("[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
-        mNewAlgoTrackerObjectBox.x = cvRound((float)mNewAlgoTrackerObjectBox.x * scale);//use oriObjectBox;
-        mNewAlgoTrackerObjectBox.y = cvRound((float)mNewAlgoTrackerObjectBox.y * scale);
+        mNewAlgoTrackerObjectBox.x = cvRound(mNewAlgoTrackerObjectBox.x * scale +mNewAlgoTrackerObjectBox.width * (scale -1) /2);//use oriObjectBox;
+        mNewAlgoTrackerObjectBox.y = cvRound(mNewAlgoTrackerObjectBox.y * scale + mNewAlgoTrackerObjectBox.width * (scale -1));
 
         resized_frame.copyTo(mBefore);
         cv::Point pt1(mNewAlgoTrackerObjectBox.x,mNewAlgoTrackerObjectBox.y);
@@ -120,6 +98,39 @@ void ObjectTracker::processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame
 }
 
 
+
+
+void ObjectTracker::calcPointArea(ORB_SLAM2::Frame _currentFrame){
+
+    int x1 = mNewAlgoTrackerObjectBox.x;
+    int y1 = mNewAlgoTrackerObjectBox.y;
+    int x2 = x1 + mNewAlgoTrackerObjectBox.width;
+    int y2 = y1 + mNewAlgoTrackerObjectBox.height;
+
+    mAreaPoints =0;
+    mArea = mNewAlgoTrackerObjectBox.width * mNewAlgoTrackerObjectBox.height;
+    float radius = sqrt(pow((float)(x2-x1)/2,2) + pow((float)(y2-y1)/2, 2));
+
+    for(int i = 0; i < (int)_currentFrame.mvpMapPoints.size(); ++i){
+        int x = _currentFrame.mvKeysUn[i].pt.x;
+        int y = _currentFrame.mvKeysUn[i].pt.y;
+        ORB_SLAM2::MapPoint* pMP = _currentFrame.mvpMapPoints[i];
+        if(pMP)
+        {
+            if(!_currentFrame.mvbOutlier[i])
+            {
+                if(pMP->Observations()>0){
+                    if ( x >= x1 && x <= x2 && y >= y1 && y<=y2){
+                        float dist = sqrt(pow((x - (float)(x1+x2)/2),2) + pow((y - (float)(y1+y2)/2), 2));
+                        float s = 1 - dist/radius;
+                        mAreaPoints += 400 * s;
+                    }
+                }
+            }
+        }
+    }
+}
+
 void ObjectTracker::processFrame2(cv::Mat& _frame, cv::Rect& _objectBox, int& radioMaxIndex, float& radioMax, ORB_SLAM2::Frame _currentFrame){
 
     cv::Rect oriObjectBox = _objectBox;
@@ -127,8 +138,6 @@ void ObjectTracker::processFrame2(cv::Mat& _frame, cv::Rect& _objectBox, int& ra
     mBenchmarkObjectBox = _objectBox;
     mBenchmarkRadioMaxIndex = radioMaxIndex;
     mBenchmarkRadioMax = radioMax;
-
-
 
 
     int x1 = _objectBox.x;
