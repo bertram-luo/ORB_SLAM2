@@ -30,6 +30,9 @@ public:
     float mNewAlgoTrackerRadioMax;
     cv::Rect mNewAlgoTrackerObjectBox;
 
+    cv::Mat mBefore;
+    cv::Mat mAfter;
+
     float mAreaPoints;
     float mArea;
 

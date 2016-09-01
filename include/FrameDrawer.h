@@ -46,7 +46,7 @@ public:
     void Update(Tracking *pTracker);
 
     // Draw last processed frame.
-    cv::Mat DrawFrame();
+    void DrawFrame(cv::Mat& m1, cv::Mat& m2, cv::Mat& m3);
 
 protected:
 
@@ -86,9 +86,11 @@ protected:
     float mArea;
     float mtArea;
 
-    
 
-
+    cv::Mat mBefore;
+    cv::Mat mtBefore;
+    cv::Mat mAfter;
+    cv::Mat mtAfter;
 
     int mKeyTrackerRadioMaxIndex;
     int mtKeyTrackerRadioMaxIndex;
