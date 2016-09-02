@@ -276,9 +276,10 @@ void CompressiveTracker::processFrame(Mat& _frame, Rect& _objectBox, int& radioM
 	classifierUpdate(sampleNegativeFeatureValue, muNegative, sigmaNegative, learnRate);
 }
 
-void CompressiveTracker::processFrameNotUpdateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax){
+void CompressiveTracker::processFrameNotUpdateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax, int _rsw){
 	// predict
-	sampleRect(_frame, _objectBox, rSearchWindow,detectBox);
+	//sampleRect(_frame, _objectBox, rSearchWindow,detectBox);
+	sampleRect(_frame, _objectBox, _rsw, detectBox);
 	integral(_frame, imageIntegral, CV_32F);
 	getFeatureValue(imageIntegral, detectBox, detectFeatureValue);
 	//int radioMaxIndex;

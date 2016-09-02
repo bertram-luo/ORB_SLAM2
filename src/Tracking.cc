@@ -45,7 +45,7 @@ namespace ORB_SLAM2
 Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
     mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
     mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys),
-    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0), mRadioMaxIndex(0), mRadioMax(0), pause(true)
+    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0), mRadioMaxIndex(0), mRadioMax(0), pause(false)
     {
 
     cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
@@ -434,18 +434,16 @@ void Tracking::Track()
         else
             mState=LOST;
 
-
-        bool pause = false;
         if (nframe >= tracking_start_frame_no){
             if (nframe == tracking_start_frame_no){
                 mpObjectTracker->init(mImGray, mObjectBox); 
             } else {
-                pause = mpObjectTracker->processFrame(mImGray, mCurrentFrame);
+                pause |= mpObjectTracker->processFrame(mImGray, mCurrentFrame);
             }
         }
 
         mpFrameDrawer->Update(this);
-        if (pause){
+        if (nframe > 6100){
             waitKey(0);
         }
         // Update drawer

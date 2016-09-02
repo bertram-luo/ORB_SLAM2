@@ -58,7 +58,7 @@ private:
 public:
 	void processFrame(Mat& _frame, Rect& _objectBox);
     void processFrame(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax);
-    void processFrameNotUpdateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax);
+    void processFrameNotUpdateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax, int _rsw = 25);
 	void init(Mat& _frame, Rect& _objectBox);
     void fullImageScan(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax);
     void updateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax);
