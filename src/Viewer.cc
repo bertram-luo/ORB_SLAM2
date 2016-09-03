@@ -51,7 +51,10 @@ Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer
     mViewpointF = fSettings["Viewer.ViewpointF"];
 }
 
-void Viewer::Run()
+void Viewer::Run(){
+
+}
+void Viewer::RunBak(bool xx)
 {
     mbFinished = false;
 
@@ -139,10 +142,10 @@ void Viewer::Run()
         mpFrameDrawer->DrawFrame(im, im2, im3);
 
         cv::imshow("ORB-SLAM2: Current Frame",im);
-        if (im2.cols > 0)
-            cv::imshow("before",im2);
-        if (im3.cols > 0)
-            cv::imshow("after",im3);
+        //if (im2.cols > 0);
+            //cv::imshow("before",im2);
+        //if (im3.cols > 0);
+            //cv::imshow("after",im3);
         cv::waitKey(mT);
 
         if(menuReset)

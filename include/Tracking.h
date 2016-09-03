@@ -41,6 +41,7 @@
 
 #include <mutex>
 
+class ObjectTracker;
 namespace ORB_SLAM2
 {
 

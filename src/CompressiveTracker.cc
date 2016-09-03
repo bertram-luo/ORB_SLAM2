@@ -116,20 +116,20 @@ void CompressiveTracker::sampleRect(Mat& _image, Rect& _objectBox, float _rInner
 		
 }
 
-void CompressiveTracker::sampleRect(Mat& _image, Rect& _objectBox, float _srw, vector<Rect>& _sampleBox)
+void CompressiveTracker::sampleRect(Mat& _image, Rect& _objectBox, float _swXLeft, float _swXRight, float _swYTop, float _swYDown, vector<Rect>& _sampleBox)
 /* Description: Compute the coordinate of samples when detecting the object.*/
 {
 	int rowsz = _image.rows - _objectBox.height - 1;
 	int colsz = _image.cols - _objectBox.width - 1;
-	float inradsq = _srw*_srw;	
+	float inradsq = sqrt(_swXLeft*_swYTop*_swXRight * _swYDown);	
 	
 
 	int dist;
 
-	int minrow = max(0,(int)_objectBox.y-(int)_srw);
-	int maxrow = min((int)rowsz-1,(int)_objectBox.y+(int)_srw);
-	int mincol = max(0,(int)_objectBox.x-(int)_srw);
-	int maxcol = min((int)colsz-1,(int)_objectBox.x+(int)_srw);
+	int minrow = max(0,(int)_objectBox.y-(int)_swYTop);
+	int maxrow = min((int)rowsz-1,(int)_objectBox.y+(int)_swYDown);
+	int mincol = max(0,(int)_objectBox.x-(int)_swXLeft);
+	int maxcol = min((int)colsz-1,(int)_objectBox.x+(int)_swXRight);
 
 	int i = 0;
 
@@ -139,6 +139,7 @@ void CompressiveTracker::sampleRect(Mat& _image, Rect& _objectBox, float _srw, v
 	Rect rec(0,0,0,0);
     _sampleBox.clear();//important
 
+	printf("sampling range [%d, %d, %d, %d]\n", minrow, maxrow, mincol, maxcol);
 	for( r=minrow; r<=(int)maxrow; r++ )
 		for( c=mincol; c<=(int)maxcol; c++ ){
 			dist = (_objectBox.y-r)*(_objectBox.y-r) + (_objectBox.x-c)*(_objectBox.x-c);
@@ -235,7 +236,7 @@ void CompressiveTracker::radioClassifier(vector<float>& _muPos, vector<float>& _
 			_radioMaxIndex = j;
 		}
 	}
-    //std::cout << "_radioMaxIndex:" << _radioMaxIndex << "_radioMax" << _radioMax<< std::endl;
+    std::cout << "_radioMaxIndex:" << _radioMaxIndex << "_radioMax" << _radioMax<< std::endl;
 }
 void CompressiveTracker::init(Mat& _frame, Rect& _objectBox)
 {
@@ -258,7 +259,7 @@ void CompressiveTracker::init(Mat& _frame, Rect& _objectBox)
 void CompressiveTracker::processFrame(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax)
 {
 	// predict
-	sampleRect(_frame, _objectBox, rSearchWindow,detectBox);
+	sampleRect(_frame, _objectBox, rSearchWindow, rSearchWindow, rSearchWindow, rSearchWindow,detectBox);
 	integral(_frame, imageIntegral, CV_32F);
 	getFeatureValue(imageIntegral, detectBox, detectFeatureValue);
 	//int radioMaxIndex;
@@ -276,23 +277,33 @@ void CompressiveTracker::processFrame(Mat& _frame, Rect& _objectBox, int& radioM
 	classifierUpdate(sampleNegativeFeatureValue, muNegative, sigmaNegative, learnRate);
 }
 
-void CompressiveTracker::processFrameNotUpdateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax, int _rsw){
+void CompressiveTracker::processFrameNotUpdateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax, int _swXLeft, int _swXRight, int _swYTop, int _swYDown){
 	// predict
 	//sampleRect(_frame, _objectBox, rSearchWindow,detectBox);
-	sampleRect(_frame, _objectBox, _rsw, detectBox);
+	//
+	_swXLeft = max (1, _swXLeft);
+	_swXRight = max (1, _swXRight);
+	_swYTop = max (1, _swYTop);
+	_swYDown = max (1, _swYDown);
+	sampleRect(_frame, _objectBox, _swXLeft,_swXRight, _swYTop, _swYDown, detectBox);
 	integral(_frame, imageIntegral, CV_32F);
 	getFeatureValue(imageIntegral, detectBox, detectFeatureValue);
 	//int radioMaxIndex;
 	//float radioMax;
 	radioClassifier(muPositive, sigmaPositive, muNegative, sigmaNegative, detectFeatureValue, radioMax, radioMaxIndex);
 	_objectBox = detectBox[radioMaxIndex];
+    printf("position [%d, %d, %d, %d]\n", detectBox[radioMaxIndex].x, detectBox[radioMaxIndex].y, detectBox[radioMaxIndex].width, detectBox[radioMaxIndex].height);
 }
 
 
-void CompressiveTracker::updateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax){
+void CompressiveTracker::updateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax, bool _sizeChanged){
+
+    if (_sizeChanged){
+	    HaarFeature(_objectBox, featureNum);
+	}
 
 	sampleRect(_frame, _objectBox, rOuterPositive, 0.0, 1000000, samplePositiveBox);
-	sampleRect(_frame, _objectBox, rSearchWindow*1.5, rOuterPositive+4.0, 100, sampleNegativeBox);
+	sampleRect(_frame, _objectBox, rSearchWindow*1.5, rOuterPositive+4.0, 1000, sampleNegativeBox);
 	
 	getFeatureValue(imageIntegral, samplePositiveBox, samplePositiveFeatureValue);
 	getFeatureValue(imageIntegral, sampleNegativeBox, sampleNegativeFeatureValue);
@@ -302,7 +313,7 @@ void CompressiveTracker::updateModel(Mat& _frame, Rect& _objectBox, int& radioMa
 
 void CompressiveTracker::fullImageScan(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax){
 	// predict
-	sampleRect(_frame, _objectBox, rSearchWindow*10,detectBox);
+	sampleRect(_frame, _objectBox, rSearchWindow*10, rSearchWindow*10, rSearchWindow*10, rSearchWindow*10, detectBox);
 	integral(_frame, imageIntegral, CV_32F);
 	getFeatureValue(imageIntegral, detectBox, detectFeatureValue);
 	//int radioMaxIndex;

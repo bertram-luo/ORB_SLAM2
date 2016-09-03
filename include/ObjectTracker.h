@@ -1,12 +1,18 @@
+#ifndef OBJECTTRACKING_H
+#define OBJECTTRACKING_H
 #include "CompressiveTracker.h"
 #include <opencv2/core/core.hpp>
 #include <vector>
 #include "Frame.h"
+#include "FrameDrawer.h"
+//#include "Tracking.h"
+
+class ORB_SLAM2::Tracking;
 
 class ObjectTracker{
 
 public:
-	ObjectTracker(void);
+	ObjectTracker(ORB_SLAM2::FrameDrawer* frameDrawer, ORB_SLAM2::Tracking * tracker);
 	~ObjectTracker(void);
 
 public:
@@ -24,6 +30,9 @@ private:
 
     void calcPointAreaAndDirection(ORB_SLAM2::Frame _currentFrame, int filter = 1);
 
+
+    ORB_SLAM2::FrameDrawer* mpFrameDrawer;
+    ORB_SLAM2::Tracking* mpTracker;
 public:
 
     int mBenchmarkRadioMaxIndex;
@@ -65,3 +74,4 @@ public:
     int mnTrackers;
 
 };
+#endif

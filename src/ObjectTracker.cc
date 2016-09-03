@@ -3,7 +3,9 @@
 #define MAX_TRACKERS (30)
 #include "MapPoint.h"
 
-ObjectTracker::ObjectTracker() :
+ObjectTracker::ObjectTracker(ORB_SLAM2::FrameDrawer* frameDrawer, ORB_SLAM2::Tracking * tracker) :
+    mpFrameDrawer(frameDrawer),
+    mpTracker(tracker),
     mBenchmarkRadioMaxIndex(0),
     mBenchmarkRadioMax(0),
     mBenchmarkObjectBox(0, 0, 0, 0),
@@ -52,8 +54,8 @@ bool ObjectTracker::processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame
 
     mpBenchmarkTracker->processFrame(_frame, mBenchmarkObjectBox , mBenchmarkRadioMaxIndex, mBenchmarkRadioMax);
 
-
-    return newAlgoTrackingArea(_frame, _currentFrame);
+    auto retval = newAlgoTrackingArea(_frame, _currentFrame);
+    return retval;
 }
 
 
@@ -61,39 +63,52 @@ bool ObjectTracker::processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame
 bool ObjectTracker::newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame){
     mpNewAlgoTracker->processFrameNotUpdateModel(_frame, mNewAlgoTrackerObjectBox , mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax);
 
+
+    bool retval = false;
     bool done = false;
     int round = 0;
-    calcPointAreaAndDirection(_currentFrame, 3);
-    while(!done){
+
+    printf("=============++++++New Frame+++++++++==============================\n");
+    bool scaled = false;
+    do{
         round ++;
-        if (mPointsArea > mArea * 0.1){
+        printf("----------------------round : %d-----------------\n", round);
+        calcPointAreaAndDirection(_currentFrame, 5);
+
+        float offsetX = m10XLess - mNewAlgoTrackerObjectBox.x; 
+        float offsetY = m01YLess - mNewAlgoTrackerObjectBox.y; 
+
+        float scaleX = mNewAlgoTrackerObjectBox.width*1.0
+            /( m10XMore - m10XLess);
+        float scaleY = mNewAlgoTrackerObjectBox.height * 1.0
+            /(m01YMore - m01YLess);
+
+        int dXLess = m10XLess - mNewAlgoTrackerObjectBox.x;
+        int dXMore = mNewAlgoTrackerObjectBox.width + mNewAlgoTrackerObjectBox.x - m10XMore;
+        int dYLess = m01YLess - mNewAlgoTrackerObjectBox.y;
+        int dYMore = mNewAlgoTrackerObjectBox.height + mNewAlgoTrackerObjectBox.y - m01YMore;
+        printf("surround centroids [%f, %f, %f, %f], offset [%f, %f]\n", 
+                m10XLess, m01YLess, m10XMore, m01YMore, offsetX, offsetY);
+        printf( "left right up down: [%d %d %d %d]\n", dXLess, dXMore, dYLess, dYMore);
+        int radiusX = max(dXLess, dXMore);
+        int radiusY = max(dYLess, dYMore);
+        
+
+        cv::Mat mOri;
+        _frame.copyTo(mOri);
+        rectangle(mOri, mNewAlgoTrackerObjectBox, cv::Scalar(0, 0, 255), 5);
+        imshow("---ori--",mOri);
+        waitKey(2);
+        printf("====== ori [%d, %d, %d, %d]===\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
+
+        if (mPointsArea > mArea * 0.15){
+
             cv::Mat resized_frame;
-
-            float offsetX = m10XLess - mNewAlgoTrackerObjectBox.x; 
-            float offsetY = m01YLess - mNewAlgoTrackerObjectBox.y; 
-
-            float scaleX = mNewAlgoTrackerObjectBox.width*1.0
-                /( m10XMore - m10XLess);
-            float scaleY = mNewAlgoTrackerObjectBox.height * 1.0
-                /(m01YMore - m01YLess);
-
-            int dXLess = m10XLess - mNewAlgoTrackerObjectBox.x;
-            int dXMore = mNewAlgoTrackerObjectBox.width + mNewAlgoTrackerObjectBox.x - m10XMore;
-            int dYLess = m01YLess - mNewAlgoTrackerObjectBox.y;
-            int dYMore = mNewAlgoTrackerObjectBox.height + mNewAlgoTrackerObjectBox.y - m01YMore;
-            printf("surround centroids [%f, %f, %f, %f], offset [%f, %f]\n", 
-                    m10XLess, m01YLess, m10XMore, m01YMore, offsetX, offsetY);
-            printf( "left right up down: [%d %d %d %d]\n", dXLess, dXMore, dYLess, dYMore);
-            int radius = max(max(dXLess, dXMore), max(dYLess, dYMore));
-            
-            printf("scale factor:[%f, %f], search radius %d \n", scaleX, scaleY, radius);
-            printf("====== ori =====[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
-
             Size sz(cvRound((float)_frame.cols*scaleX), cvRound((float)_frame.rows*scaleY));
             resize(_frame, resized_frame, sz,0, 0,INTER_LINEAR);
 
-            mNewAlgoTrackerObjectBox.x = cvRound(mNewAlgoTrackerObjectBox.x * scaleX + offsetX + radius);//use oriObjectBox;
-            mNewAlgoTrackerObjectBox.y = cvRound(mNewAlgoTrackerObjectBox.y * scaleY + offsetY + radius);
+            mNewAlgoTrackerObjectBox.x = cvRound(m10XLess * scaleX);//use oriObjectBox;
+            mNewAlgoTrackerObjectBox.y = cvRound(m01YLess * scaleY);
             resized_frame.copyTo(mBefore);
             cv::Point pt1(mNewAlgoTrackerObjectBox.x,mNewAlgoTrackerObjectBox.y);
             cv::Point pt2(pt1.x + mNewAlgoTrackerObjectBox.width, pt1.y+mNewAlgoTrackerObjectBox.height);
@@ -101,15 +116,33 @@ bool ObjectTracker::newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _curre
             //printf("===before===[%d, %d, %d, %d]\n", pt1.x, pt1.y, pt2.x - pt1.x, pt2.y - pt1.y);
             printf("====before ===[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
 
-
-            mpNewAlgoTracker->processFrameNotUpdateModel(_frame, mNewAlgoTrackerObjectBox , mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax, radius);
+            imshow("---before---", mBefore);
+            waitKey(2);
+            mpNewAlgoTracker->processFrameNotUpdateModel(
+                    resized_frame, mNewAlgoTrackerObjectBox ,
+                    mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax, 
+                    dXMore * scaleX, dXLess*scaleX, dYMore*scaleY, dYLess*scaleY);
             printf("=====after =====[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
 
             
+            printf("doing scaleing dividing x %d by factor %f scaleX, resulting%d\n", mNewAlgoTrackerObjectBox.x, scaleX, cvRound((float)mNewAlgoTrackerObjectBox.x / scaleX));
             mNewAlgoTrackerObjectBox.x = cvRound((float)mNewAlgoTrackerObjectBox.x / scaleX);
             mNewAlgoTrackerObjectBox.y = cvRound((float)mNewAlgoTrackerObjectBox.y / scaleY);
-            if (dXLess == 0 || dXMore == 0 || round == 1){ scaleX = 1;}
-            if (dYLess == 0 || dYMore == 0 || round == 1) {scaleY = 1;}
+
+            bool scaledX = scaled;
+            bool scaledY = scaled;
+            if ((dXLess == 0 || dXMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.width-m10XMore + m10XLess) > 20 || (mNewAlgoTrackerObjectBox.height-m01YMore + m01YLess) > 20){ scaleX = 1;}//substitue round to convergent algorithm
+            //if ((dXLess == 0 || dXMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.width-m10XMore + m10XLess) > 20 && scaleX >1.3){ scaleX = 1;}//substitue round to convergent algorithm
+            else{
+                scaledX = true;
+            }
+            if ((dYLess == 0 || dYMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.width-m10XMore + m10XLess) > 20 || (mNewAlgoTrackerObjectBox.height-m01YMore + m01YLess) > 20) {scaleY = 1;}
+            //if ((dYLess == 0 || dYMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.height-m01YMore + m01YLess) > 20 && scaleY > 1.3) {scaleY = 1;}
+            else {
+                scaledY = true;
+            }
+            scaled = scaledX || scaledY;
+
             mNewAlgoTrackerObjectBox.width = cvRound((float)mNewAlgoTrackerObjectBox.width / scaleX);
             mNewAlgoTrackerObjectBox.height = cvRound((float)mNewAlgoTrackerObjectBox.height / scaleY);
 
@@ -117,27 +150,42 @@ bool ObjectTracker::newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _curre
             cv::Point pt3(mNewAlgoTrackerObjectBox.x,mNewAlgoTrackerObjectBox.y);
             cv::Point pt4(pt3.x + mNewAlgoTrackerObjectBox.width, pt3.y+mNewAlgoTrackerObjectBox.height);
             rectangle(mAfter, pt3,pt4,cv::Scalar(0,0, 200));
+            imshow("---after---", mAfter);
+            waitKey(1);
+            waitKey(0);
 
             printf("===== finally =====[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
 
             
-            calcPointAreaAndDirection(_currentFrame, 3);
-            if (mPointsArea < mArea * 0.1){
+            if (mPointsArea < mArea * 0.15 || round >= 10){
                 mpNewAlgoTracker->updateModel(_frame, mNewAlgoTrackerObjectBox, mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax);
-                return true;
+                retval = true;
+                break;
+            }
+            if (scaled){
+                mpNewAlgoTracker->updateModel(_frame, mNewAlgoTrackerObjectBox, mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax, true);
+                retval = true;
+                break;
             }
             //mpNewAlgoTracker->init(_frame, mNewAlgoTrackerObjectBox);
         } else {
             mpNewAlgoTracker->updateModel(_frame, mNewAlgoTrackerObjectBox, mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax);
-            return false;
+            retval = true;
+            break;
         }
-    }
 
-    return true;
+    }while(!done && round < 10);
+
+    cv::Mat tmp1, tmp2, tmp3;
+    mpFrameDrawer->DrawFrame(tmp1, tmp2, tmp3);
+    cv::imshow("ORB-SLAM2: Current Frame",tmp1);
+    waitKey(10);
 }
 
 void ObjectTracker::calcPointAreaAndDirection(ORB_SLAM2::Frame _currentFrame, int filter){
 
+    float outerBoundFactor = 0.1;
+    float innerBoundFactor = 0.15;
 
     float toleranceX = mNewAlgoTrackerObjectBox.width * 0.04;
     float toleranceY = mNewAlgoTrackerObjectBox.height * 0.04;
@@ -147,10 +195,14 @@ void ObjectTracker::calcPointAreaAndDirection(ORB_SLAM2::Frame _currentFrame, in
     int y2 = y1 + mNewAlgoTrackerObjectBox.height;
     float centroidX = (float)(x1 + x2) / 2;
     float centroidY = (float)(y1 + y2) / 2;
-    float lowerBoundX = ((float)x1 + 0.1 * mNewAlgoTrackerObjectBox.width);
-    float lowerBoundY = ((float)y1  + 0.1 * mNewAlgoTrackerObjectBox.height);
-    float upperBoundX = ((float)x1 + 0.9 * mNewAlgoTrackerObjectBox.width);
-    float upperBoundY = ((float)y1  + 0.9 * mNewAlgoTrackerObjectBox.height);
+    float lowerBoundOuterX = ((float)x1 + outerBoundFactor * mNewAlgoTrackerObjectBox.width);
+    float lowerBoundOuterY= ((float)y1  + outerBoundFactor * mNewAlgoTrackerObjectBox.height);
+    float upperBoundOuterX = ((float)x1 + (1 - outerBoundFactor) * mNewAlgoTrackerObjectBox.width);
+    float upperBoundOuterY = ((float)y1  + (1 - outerBoundFactor) * mNewAlgoTrackerObjectBox.height);
+    float lowerBoundInnerX = ((float)x1 + innerBoundFactor * mNewAlgoTrackerObjectBox.width);
+    float lowerBoundInnerY= ((float)y1  + innerBoundFactor * mNewAlgoTrackerObjectBox.height);
+    float upperBoundInnerX = ((float)x1 + (1 - innerBoundFactor) * mNewAlgoTrackerObjectBox.width);
+    float upperBoundInnerY = ((float)y1  + (1 - innerBoundFactor) * mNewAlgoTrackerObjectBox.height);
     float firstQuantileX = (3.0 / 4 * x1 + 1.0 / 4 * x2);
     float firstQuantileY = (3.0 / 4 * y1 + 1.0 / 4 * y2);
     float thirdQuantileX = (1.0 / 4 * x1 + 3.0 / 4 * x2);
@@ -172,7 +224,8 @@ void ObjectTracker::calcPointAreaAndDirection(ORB_SLAM2::Frame _currentFrame, in
 
     
     mArea = mNewAlgoTrackerObjectBox.width * mNewAlgoTrackerObjectBox.height;
-    float radius = sqrt(pow((float)(x2-x1)/2,2) + pow((float)(y2-y1)/2, 2));
+    float radius = sqrt(((float)(x2-x1)/2,2) + pow((float)(y2-y1)/2, 2));
+    //float radius = sqrt((float)(x2-x1)/2 * (float)(y2-y1)/2);
 
 
     int nDiscardInnerPoints  = 0;
@@ -190,22 +243,22 @@ void ObjectTracker::calcPointAreaAndDirection(ORB_SLAM2::Frame _currentFrame, in
 
                         if (pMP->Observations() >= filter){
 
-                            if (x > lowerBoundX && x < upperBoundX && y < lowerBoundY ){
+                            if (x > lowerBoundOuterX && x < upperBoundOuterX && y < lowerBoundInnerY){
                                 n01YLess++;
                                 m01YLess += y - y1;
                             } 
 
-                            if (x > lowerBoundX && x < upperBoundX && y > upperBoundY ){
+                            if (x > lowerBoundOuterX && x < upperBoundOuterX && y > upperBoundInnerY ){
                                 n01YMore++;
                                 m01YMore += y - y1;
                             } 
 
-                            if (y > lowerBoundY && y < upperBoundY && x < lowerBoundX ){
+                            if (y > lowerBoundOuterY && y < upperBoundOuterY && x < lowerBoundInnerX ){
                                 n10XLess++;
                                 m10XLess += x - x1;
                             } 
 
-                            if (y > lowerBoundY && y < upperBoundY && x > upperBoundX ){
+                            if (y > lowerBoundOuterY && y < upperBoundOuterY && x > upperBoundInnerX ){
                                 n10XMore++;
                                 m10XMore += x - x1;
                             } 
@@ -264,12 +317,6 @@ void ObjectTracker::calcPointAreaAndDirection(ORB_SLAM2::Frame _currentFrame, in
         }
     }
 
-
-
-
-
-
-    printf("\n");
     printf("points:%d LPA%f,PA %f, ratio %f |TA %f \n",
             npoints,
             lessPointsArea, 

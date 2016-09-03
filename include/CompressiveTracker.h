@@ -50,7 +50,7 @@ private:
 private:
 	void HaarFeature(Rect& _objectBox, int _numFeature);
 	void sampleRect(Mat& _image, Rect& _objectBox, float _rInner, float _rOuter, int _maxSampleNum, vector<Rect>& _sampleBox);
-	void sampleRect(Mat& _image, Rect& _objectBox, float _srw, vector<Rect>& _sampleBox);
+	void sampleRect(Mat& _image, Rect& _objectBox, float _swXLeft, float _swXRight, float _swYTop, float _swYDown, vector<Rect>& _sampleBox);
 	void getFeatureValue(Mat& _imageIntegral, vector<Rect>& _sampleBox, Mat& _sampleFeatureValue);
 	void classifierUpdate(Mat& _sampleFeatureValue, vector<float>& _mu, vector<float>& _sigma, float _learnRate);
 	void radioClassifier(vector<float>& _muPos, vector<float>& _sigmaPos, vector<float>& _muNeg, vector<float>& _sigmaNeg,
@@ -58,8 +58,8 @@ private:
 public:
 	void processFrame(Mat& _frame, Rect& _objectBox);
     void processFrame(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax);
-    void processFrameNotUpdateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax, int _rsw = 25);
+    void processFrameNotUpdateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax, int _swXLeft = 25, int _swXRight = 25, int _swYTop = 25, int _swYDown =25);
 	void init(Mat& _frame, Rect& _objectBox);
     void fullImageScan(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax);
-    void updateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax);
+    void updateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax, bool _sizeChanged = false);
 };

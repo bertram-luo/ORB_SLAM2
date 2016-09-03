@@ -157,7 +157,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
 
     tracking_start_frame_no = fSettings["Tracking.startFrame"];
     printf("tracking start frame no%d\n", tracking_start_frame_no);
-    mpObjectTracker = new ObjectTracker;
+    mpObjectTracker = new ObjectTracker(mpFrameDrawer, this);
 
     nframe = 0;
 }
@@ -434,6 +434,7 @@ void Tracking::Track()
         else
             mState=LOST;
 
+        printf("===========+++frame no %d ++====\n", nframe);
         if (nframe >= tracking_start_frame_no){
             if (nframe == tracking_start_frame_no){
                 mpObjectTracker->init(mImGray, mObjectBox); 
@@ -442,10 +443,11 @@ void Tracking::Track()
             }
         }
 
-        mpFrameDrawer->Update(this);
-        if (nframe > 6100){
-            waitKey(0);
+        if (nframe > 6000){
+            //waitKey(0);
         }
+
+        mpFrameDrawer->Update(this);
         // Update drawer
 
         // If tracking were good, check if we insert a keyframe
