@@ -50,18 +50,42 @@ void ObjectTracker::init(cv::Mat& _frame, cv::Rect& _objectBox){
     printf("init done\n");
 }
 
-bool ObjectTracker::processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame){
+bool ObjectTracker::processFrame(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame){
 
+    _imOri.copyTo(mImOri);
     mpBenchmarkTracker->processFrame(_frame, mBenchmarkObjectBox , mBenchmarkRadioMaxIndex, mBenchmarkRadioMax);
 
-    auto retval = newAlgoTrackingArea(_frame, _currentFrame);
+    auto retval = newAlgoTrackingArea( _frame, _currentFrame);
     return retval;
 }
 
+//This colors the segmentations
+void ObjectTracker::floodFillPostprocess( Mat& img, const Scalar& colorDiff)
+{
+    CV_Assert( !img.empty() );
+    RNG rng = theRNG();
+    Mat mask( img.rows+2, img.cols+2, CV_8UC1, Scalar::all(0) );
+    for( int y = 0; y < img.rows; y++ )
+    {
+        for( int x = 0; x < img.cols; x++ )
+        {
+            if( mask.at<uchar>(y+1, x+1) == 0 )
+            {
+                Scalar newVal( rng(256), rng(256), rng(256) );
+                floodFill( img, mask, Point(x,y), newVal, 0, colorDiff, colorDiff );
+            }
+        }
+    }
+}
 
 
 bool ObjectTracker::newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame){
     mpNewAlgoTracker->processFrameNotUpdateModel(_frame, mNewAlgoTrackerObjectBox , mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax);
+
+    cv::Mat tmp1, tmp2, tmp3;
+    mpFrameDrawer->DrawFrame(tmp1, tmp2, tmp3);
+    cv::imshow("ORB-SLAM2: Current Frame",tmp1);
+    waitKey(10);
 
 
     bool retval = false;
@@ -131,16 +155,21 @@ bool ObjectTracker::newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _curre
 
             bool scaledX = scaled;
             bool scaledY = scaled;
-            if ((dXLess == 0 || dXMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.width-m10XMore + m10XLess) > 20 || (mNewAlgoTrackerObjectBox.height-m01YMore + m01YLess) > 20){ scaleX = 1;}//substitue round to convergent algorithm
-            //if ((dXLess == 0 || dXMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.width-m10XMore + m10XLess) > 20 && scaleX >1.3){ scaleX = 1;}//substitue round to convergent algorithm
-            else{
+            //if ((dXLess == 0 || dXMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.width-m10XMore + m10XLess) > 20 || (mNewAlgoTrackerObjectBox.height-m01YMore + m01YLess) > 20){ scaleX = 1;}//substitue round to convergent algorithm
+            //else{
+            //    scaledX = true;
+            //}
+            if ((scaleX > 1.3) || (dXLess >= 20)|| (dXMore >= 20) &&scaleX < 1.4  && round > 2){
                 scaledX = true;
+            } else {
+                scaleX = 1;
             }
-            if ((dYLess == 0 || dYMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.width-m10XMore + m10XLess) > 20 || (mNewAlgoTrackerObjectBox.height-m01YMore + m01YLess) > 20) {scaleY = 1;}
+            //if ((dXLess == 0 || dXMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.width-m10XMore + m10XLess) > 20 && scaleX >1.3){ scaleX = 1;}//substitue round to convergent algorithm
+            //else {
+            //    scaledY = true;
+            //}
+            if (scaleY > 1.3 || (dYLess >= 0 ) || (dYMore >= 20 ) && round > 2 && scaleY < 1.4) {scaledY = true;;} else {scaleY = 1;}
             //if ((dYLess == 0 || dYMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.height-m01YMore + m01YLess) > 20 && scaleY > 1.3) {scaleY = 1;}
-            else {
-                scaledY = true;
-            }
             scaled = scaledX || scaledY;
 
             mNewAlgoTrackerObjectBox.width = cvRound((float)mNewAlgoTrackerObjectBox.width / scaleX);
@@ -176,16 +205,29 @@ bool ObjectTracker::newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _curre
 
     }while(!done && round < 10);
 
-    cv::Mat tmp1, tmp2, tmp3;
-    mpFrameDrawer->DrawFrame(tmp1, tmp2, tmp3);
-    cv::imshow("ORB-SLAM2: Current Frame",tmp1);
-    waitKey(10);
+
+
+    int spatialRad, colorRad, maxPyrLevel;
+    spatialRad = 5;
+    colorRad = 40;
+    maxPyrLevel = 1;
+    cv::Mat segres;
+    //cv::Mat src(mImOri, mNewAlgoTrackerObjectBox);
+    cv::Mat src(mImOri, mBenchmarkObjectBox);
+    
+    pyrMeanShiftFiltering( src, segres, spatialRad, colorRad, maxPyrLevel );
+    floodFillPostprocess( segres, Scalar::all(2) );
+    src = segres;
+
+    imshow("seged", src);
+            waitKey(0);
+    return retval;
 }
 
 void ObjectTracker::calcPointAreaAndDirection(ORB_SLAM2::Frame _currentFrame, int filter){
 
     float outerBoundFactor = 0.1;
-    float innerBoundFactor = 0.15;
+    float innerBoundFactor = 0.25;
 
     float toleranceX = mNewAlgoTrackerObjectBox.width * 0.04;
     float toleranceY = mNewAlgoTrackerObjectBox.height * 0.04;

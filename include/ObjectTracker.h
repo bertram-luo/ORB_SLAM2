@@ -16,7 +16,7 @@ public:
 	~ObjectTracker(void);
 
 public:
-    bool processFrame(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
+    bool processFrame(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
 	void init(cv::Mat& _frame, cv::Rect& _objectBox);
     bool newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
     void newAlgoTrackingAreaAndNormalDirection(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
@@ -26,6 +26,7 @@ private:
     CompressiveTracker* mpBenchmarkTracker;
     CompressiveTracker* mpNewAlgoTracker;
 
+    void floodFillPostprocess( Mat& img, const Scalar& colorDiff=Scalar::all(1) );
     void processFrame2(cv::Mat& _frame, cv::Rect& _objectBox, int& radioMaxIndex, float& radioMax,ORB_SLAM2::Frame _currentFrame);
 
     void calcPointAreaAndDirection(ORB_SLAM2::Frame _currentFrame, int filter = 1);
@@ -43,6 +44,8 @@ public:
     float mNewAlgoTrackerRadioMax;
     cv::Rect mNewAlgoTrackerObjectBox;
 
+
+    cv::Mat mImOri;
     cv::Mat mBefore;
     cv::Mat mAfter;
 

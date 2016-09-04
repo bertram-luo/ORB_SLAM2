@@ -220,7 +220,6 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
 
 cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp)
 {
-    mImGray = imRGB;
     cv::Mat imDepth = imD;
 
     if(mImGray.channels()==3)
@@ -251,6 +250,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
 
 cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 {
+    im.copyTo(mImOri);
     mImGray = im;
 
     if(mImGray.channels()==3)
@@ -439,7 +439,7 @@ void Tracking::Track()
             if (nframe == tracking_start_frame_no){
                 mpObjectTracker->init(mImGray, mObjectBox); 
             } else {
-                pause |= mpObjectTracker->processFrame(mImGray, mCurrentFrame);
+                pause |= mpObjectTracker->processFrame(mImOri, mImGray, mCurrentFrame);
             }
         }
 
