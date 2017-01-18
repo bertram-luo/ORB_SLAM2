@@ -139,6 +139,7 @@ void CompressiveTracker::sampleRect(Mat& _image, Rect& _objectBox, float _swXLef
 	Rect rec(0,0,0,0);
     _sampleBox.clear();//important
 
+    printf("sampling offset [%f, %f, %f, %f]\n", _swXLeft, _swXRight, _swYTop, _swYDown);
 	printf("sampling range [%d, %d, %d, %d]\n", minrow, maxrow, mincol, maxcol);
 	for( r=minrow; r<=(int)maxrow; r++ )
 		for( c=mincol; c<=(int)maxcol; c++ ){
@@ -297,18 +298,21 @@ void CompressiveTracker::processFrameNotUpdateModel(Mat& _frame, Rect& _objectBo
 
 
 void CompressiveTracker::updateModel(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax, bool _sizeChanged){
+    float _learnRate = learnRate;
 
     if (_sizeChanged){
 	    HaarFeature(_objectBox, featureNum);
+	    learnRate = 0.5;
 	}
 
 	sampleRect(_frame, _objectBox, rOuterPositive, 0.0, 1000000, samplePositiveBox);
-	sampleRect(_frame, _objectBox, rSearchWindow*1.5, rOuterPositive+4.0, 1000, sampleNegativeBox);
+	sampleRect(_frame, _objectBox, rSearchWindow*1.5, rOuterPositive+4.0, 10000, sampleNegativeBox);
 	
 	getFeatureValue(imageIntegral, samplePositiveBox, samplePositiveFeatureValue);
 	getFeatureValue(imageIntegral, sampleNegativeBox, sampleNegativeFeatureValue);
 	classifierUpdate(samplePositiveFeatureValue, muPositive, sigmaPositive, learnRate);
 	classifierUpdate(sampleNegativeFeatureValue, muNegative, sigmaNegative, learnRate);
+	learnRate = _learnRate;
 }
 
 void CompressiveTracker::fullImageScan(Mat& _frame, Rect& _objectBox, int& radioMaxIndex, float& radioMax){

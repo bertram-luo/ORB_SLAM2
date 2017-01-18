@@ -7,7 +7,7 @@ ENDIF()
 
 MESSAGE("Build type: " ${CMAKE_BUILD_TYPE})
 
-if(CMAKE_BUILD_TYPE MATCHES RELEASE)
+if(CMAKE_BUILD_TYPE MATCHES Release)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall  -O3 -march=native ")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall   -O3 -march=native")
     message(STATUS "build RELEASE with O3 opened")
@@ -75,7 +75,10 @@ src/Sim3Solver.cc
 src/Initializer.cc
 src/Viewer.cc
 src/CompressiveTracker.cc
+src/CtmsTracker.cc
 src/ObjectTracker.cc
+src/SPTracker.cc
+src/slic.cpp
 )
 
 

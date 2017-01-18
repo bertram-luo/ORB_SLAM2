@@ -2,6 +2,8 @@
 #include "Frame.h"
 #define MAX_TRACKERS (30)
 #include "MapPoint.h"
+#include "slic.h"
+#include "log.h"
 
 ObjectTracker::ObjectTracker(ORB_SLAM2::FrameDrawer* frameDrawer, ORB_SLAM2::Tracking * tracker) :
     mpFrameDrawer(frameDrawer),
@@ -12,6 +14,12 @@ ObjectTracker::ObjectTracker(ORB_SLAM2::FrameDrawer* frameDrawer, ORB_SLAM2::Tra
     mNewAlgoTrackerRadioMaxIndex(0),
     mNewAlgoTrackerRadioMax(0),
     mNewAlgoTrackerObjectBox(0, 0, 0, 0),
+    mSPTrackerRadioMaxIndex(0),
+    mSPTrackerRadioMax(0),
+    mSPTrackerObjectBox(0, 0, 0, 0),
+    mCtmsTrackerRadioMaxIndex(0),
+    mCtmsTrackerRadioMax(0),
+    mCtmsTrackerObjectBox(0, 0, 0, 0),
     mPointsArea(0),
     mArea(0),
     mvRadioMaxIndexes(std::vector<int>(2*(MAX_TRACKERS),0)),
@@ -21,10 +29,14 @@ ObjectTracker::ObjectTracker(ORB_SLAM2::FrameDrawer* frameDrawer, ORB_SLAM2::Tra
 {
         
 
+    printf("creating object tracker\n");
     mpBenchmarkTracker = new CompressiveTracker;
     mpNewAlgoTracker = new CompressiveTracker;
     mvpTrackers.push_back(new CompressiveTracker);
+    mpCtmsTracker = new CtmsTracker;
+    mpSPTracker = new SPTracker;
     mnTrackers++;
+    printf("object tracker created\n");
 
 }
 
@@ -39,24 +51,86 @@ ObjectTracker::~ObjectTracker(){
     delete mpNewAlgoTracker;
 }
 
-void ObjectTracker::init(cv::Mat& _frame, cv::Rect& _objectBox){
+void ObjectTracker::init(cv::Mat& _oriFrame, cv::Mat& _frame, cv::Rect& _objectBox){
     mvObjectBoxes[0] = _objectBox;
     mBenchmarkObjectBox = _objectBox;
     mNewAlgoTrackerObjectBox = _objectBox;
+    mCtmsTrackerObjectBox = _objectBox;
+    mSPTrackerObjectBox = _objectBox;
 
+    printf("===in init frame size[%d %d]\n", _frame.rows, _frame.cols);
     mvpTrackers[0]->init(_frame, mvObjectBoxes[0]);
     mpBenchmarkTracker->init(_frame, mBenchmarkObjectBox);
     mpNewAlgoTracker->init(_frame, mNewAlgoTrackerObjectBox);
+    mpCtmsTracker->init(_frame, mCtmsTrackerObjectBox);
+    printf("===in init frame size[%d %d]\n", _frame.rows, _frame.cols);
+    mpSPTracker->init(_oriFrame, mSPTrackerObjectBox);
     printf("init done\n");
 }
 
-bool ObjectTracker::processFrame(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame){
+bool ObjectTracker::processFrameCtms(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame){
+    _imOri.copyTo(mImOri);
+    mpBenchmarkTracker->processFrame(_frame, mBenchmarkObjectBox , mBenchmarkRadioMaxIndex, mBenchmarkRadioMax);
+    
+    auto retval = newAlgoTrackingArea( _frame, _currentFrame);
+    CtmsTracking(_frame, _currentFrame);
+    return retval; 
+}
 
+bool ObjectTracker::CtmsTracking(cv::Mat _frame, ORB_SLAM2::Frame _currentFrame){
+    cv::Mat prob(_frame.size(), CV_32F);
+    prob.setTo(0);
+
+    cv::Mat ori;
+    _frame.convertTo(ori, CV_32FC1, 1/255.0);
+
+    mpCtmsTracker->processFrame(_frame, mCtmsTrackerObjectBox, mCtmsTrackerRadioMaxIndex, mCtmsTrackerRadioMax, prob);
+
+    printf("showing prob image\n");
+
+    for(int r = 0; r < prob.rows; ++r){
+        for(int c = 0; c < prob.cols; ++c){
+            if (prob.at<float>(r, c) <= 0){
+                prob.at<float>(r, c) = ori.at<float>(r, c);
+            }
+        }
+    }
+    cv::imshow("prob after",prob);
+    cv::waitKey(2);
+    return false; //TODO danger what is the bool retval for;
+}
+
+bool ObjectTracker::processFrameHeuristic(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame){
     _imOri.copyTo(mImOri);
     mpBenchmarkTracker->processFrame(_frame, mBenchmarkObjectBox , mBenchmarkRadioMaxIndex, mBenchmarkRadioMax);
 
     auto retval = newAlgoTrackingArea( _frame, _currentFrame);
     return retval;
+}
+
+bool ObjectTracker::processFrame(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame){
+    //return processFrameHeuristic(_imOri, _frame, _currentFrame);
+    printf("[%s: %d],int processFrame\n", __FILE__, __LINE__);
+    cv::Mat new_frame = _frame.clone();
+    processFrameCtms(_imOri, _frame, _currentFrame);
+    processFrameSPT(_imOri, new_frame, _currentFrame);
+    SLAM_DEBUG("result by ctms [%d, %d, %d, %d]", mCtmsTrackerObjectBox.x, mCtmsTrackerObjectBox.y, mCtmsTrackerObjectBox.width, mCtmsTrackerObjectBox.height);
+    SLAM_DEBUG("result by SPT [%d, %d, %d, %d]", mSPTrackerObjectBox.x, mSPTrackerObjectBox.y, mSPTrackerObjectBox.width, mSPTrackerObjectBox.height);
+    return false;
+}
+bool ObjectTracker::processFrameSPT(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame){
+    static int count = 1;
+    count ++;
+    printf("in processFrameSPt %d\n", count);
+    if (count <= 4){
+        cv::Mat new_frame = _imOri.clone();
+        mpSPTracker->addTrainFrame(new_frame, mCtmsTrackerObjectBox);
+        if (count == 4){
+            mpSPTracker->train();
+        }
+        return false;
+    }
+    mpSPTracker->run(_imOri, mSPTrackerObjectBox);
 }
 
 //This colors the segmentations
@@ -85,20 +159,24 @@ bool ObjectTracker::newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _curre
     cv::Mat tmp1, tmp2, tmp3;
     mpFrameDrawer->DrawFrame(tmp1, tmp2, tmp3);
     cv::imshow("ORB-SLAM2: Current Frame",tmp1);
-    waitKey(10);
+    waitKey(5);
 
 
     bool retval = false;
     bool done = false;
     int round = 0;
 
-    printf("=============++++++New Frame+++++++++==============================\n");
     bool scaled = false;
-    do{
+    for(;;){
         round ++;
-        printf("----------------------round : %d-----------------\n", round);
+        printf("-----------------round : %d--------------\n", round);
         calcPointAreaAndDirection(_currentFrame, 5);
 
+
+        float x = mNewAlgoTrackerObjectBox.x;
+        float y = mNewAlgoTrackerObjectBox.y;
+        float w = mNewAlgoTrackerObjectBox.width;
+        float h = mNewAlgoTrackerObjectBox.height;
         float offsetX = m10XLess - mNewAlgoTrackerObjectBox.x; 
         float offsetY = m01YLess - mNewAlgoTrackerObjectBox.y; 
 
@@ -107,126 +185,231 @@ bool ObjectTracker::newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _curre
         float scaleY = mNewAlgoTrackerObjectBox.height * 1.0
             /(m01YMore - m01YLess);
 
+
         int dXLess = m10XLess - mNewAlgoTrackerObjectBox.x;
         int dXMore = mNewAlgoTrackerObjectBox.width + mNewAlgoTrackerObjectBox.x - m10XMore;
         int dYLess = m01YLess - mNewAlgoTrackerObjectBox.y;
         int dYMore = mNewAlgoTrackerObjectBox.height + mNewAlgoTrackerObjectBox.y - m01YMore;
+
+        bool scaledLeft = scaled;
+        bool scaledRight = scaled;
+        bool scaledTop = scaled;
+        bool scaledDown = scaled;
+
         printf("surround centroids [%f, %f, %f, %f], offset [%f, %f]\n", 
                 m10XLess, m01YLess, m10XMore, m01YMore, offsetX, offsetY);
-        printf( "left right up down: [%d %d %d %d]\n", dXLess, dXMore, dYLess, dYMore);
-        int radiusX = max(dXLess, dXMore);
-        int radiusY = max(dYLess, dYMore);
-        
+        printf( "left right up down: [%d %d %d %d], scaling facotr[%f, %f]\n", dXLess, dXMore, dYLess, dYMore, scaleX, scaleY);
+
+        if (mPointsArea < mArea * 0.15){
+            mpNewAlgoTracker->updateModel(_frame, mNewAlgoTrackerObjectBox, mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax);
+            break;
+        }
+
+        cv::Rect tBB = mNewAlgoTrackerObjectBox;
+        if (round >= 10){
+            if (abs(dXLess - dXMore) < 5 && abs(dYLess - dYMore) < 5 && dXLess <= 9 && dXMore <= 9 && dYLess <= 9 && dYMore <= 9){
+                break;
+            }
+            printf("ori location after round 10:[%d, %d, %d, %d]\n",mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y, mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
+            if (abs(dXLess - dXMore) > 5 && (dXLess >=9 || dXMore >= 9)){
+                if (dXLess > dXMore){
+                    mNewAlgoTrackerObjectBox.x += dXLess - 9;
+                    mNewAlgoTrackerObjectBox.width = mNewAlgoTrackerObjectBox.width - dXLess + 9;
+                }else {
+                    mNewAlgoTrackerObjectBox.width = mNewAlgoTrackerObjectBox.width - dXMore + 9;
+                }
+            }
+            if (abs(dYLess - dYMore) > 5){
+                if (dYLess > dYMore){
+                    mNewAlgoTrackerObjectBox.y = mNewAlgoTrackerObjectBox.y + dYLess - 9;
+                    mNewAlgoTrackerObjectBox.height = mNewAlgoTrackerObjectBox.height - dYLess + 9;
+                }else {
+                    mNewAlgoTrackerObjectBox.height = mNewAlgoTrackerObjectBox.height - dYMore + 9;
+                }
+            }
+            printf("scaled location after round 10:[%d, %d, %d, %d]\n",mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y, mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
+            mpNewAlgoTracker->updateModel(_frame, mNewAlgoTrackerObjectBox, mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax, true);
+            retval = true;
+            break;
+        }
+
+        if (round > 2){
+            //if ((float)(dXMore)/mNewAlgoTrackerObjectBox.width > 0.15 && dXMore >= 15){
+            if (dXMore >= 15){
+                scaledLeft = true;
+            }
+            if (dXLess >= 15){
+                scaledRight = true;
+            }
+            if (dYMore >= 15){
+                scaledTop = true;
+            }
+            if(dYLess >= 15) {
+                scaledDown = true;
+            }
+        }
+        scaled = scaled || scaledTop || scaledDown || scaledLeft || scaledRight;
+
+
+        if (scaledLeft){
+            mNewAlgoTrackerObjectBox.width = mNewAlgoTrackerObjectBox.width - dXMore + 9;
+        }
+        if (scaledRight){
+            mNewAlgoTrackerObjectBox.x = mNewAlgoTrackerObjectBox.x + dXLess - 9;
+            mNewAlgoTrackerObjectBox.width = mNewAlgoTrackerObjectBox.width - dXLess + 9;
+        }
+        if (scaledTop){
+            mNewAlgoTrackerObjectBox.height = mNewAlgoTrackerObjectBox.height - dYMore + 9;
+        }
+        if (scaledDown){
+            mNewAlgoTrackerObjectBox.y = mNewAlgoTrackerObjectBox.y + dYLess - 9;
+            mNewAlgoTrackerObjectBox.height = mNewAlgoTrackerObjectBox.height - dYLess + 9;
+        }
+
+        if (scaled){
+            //waitKey(0);
+            mpNewAlgoTracker->updateModel(_frame, mNewAlgoTrackerObjectBox, mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax, true);
+            printf("scaled location [%d, %d, %d, %d]\n",mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y, mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
+            //mpNewAlgoTracker->processFrameNotUpdateModel(_frame, mNewAlgoTrackerObjectBox , mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax);
+            retval = true;
+            break;
+        }
+
+
 
         cv::Mat mOri;
         _frame.copyTo(mOri);
         rectangle(mOri, mNewAlgoTrackerObjectBox, cv::Scalar(0, 0, 255), 5);
         imshow("---ori--",mOri);
         waitKey(2);
-        printf("====== ori [%d, %d, %d, %d]===\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
+        printf("==== ori [%d, %d, %d, %d]===\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
 
-        if (mPointsArea > mArea * 0.15){
+        float centerX = (x + (float)w / 2) * scaleX;
+        float centerY = (y + (float)h / 2) * scaleY;
+        float originX = centerX - w / 2;
+        float originY = centerY - h / 2;
 
-            cv::Mat resized_frame;
-            Size sz(cvRound((float)_frame.cols*scaleX), cvRound((float)_frame.rows*scaleY));
-            resize(_frame, resized_frame, sz,0, 0,INTER_LINEAR);
+        cv::Mat resized_frame;
+        Size sz(cvRound((float)_frame.cols*scaleX), cvRound((float)_frame.rows*scaleY));
+        resize(_frame, resized_frame, sz,0, 0,INTER_LINEAR);
 
-            mNewAlgoTrackerObjectBox.x = cvRound(m10XLess * scaleX);//use oriObjectBox;
-            mNewAlgoTrackerObjectBox.y = cvRound(m01YLess * scaleY);
-            resized_frame.copyTo(mBefore);
-            cv::Point pt1(mNewAlgoTrackerObjectBox.x,mNewAlgoTrackerObjectBox.y);
-            cv::Point pt2(pt1.x + mNewAlgoTrackerObjectBox.width, pt1.y+mNewAlgoTrackerObjectBox.height);
-            rectangle(mBefore, pt1,pt2,cv::Scalar(0,0,200));
-            //printf("===before===[%d, %d, %d, %d]\n", pt1.x, pt1.y, pt2.x - pt1.x, pt2.y - pt1.y);
-            printf("====before ===[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
+        //mNewAlgoTrackerObjectBox.x = cvRound(m10XLess * scaleX);//use oriObjectBox;
+        //mNewAlgoTrackerObjectBox.y = cvRound(m01YLess * scaleY);
+        mNewAlgoTrackerObjectBox.x = originX;//use oriObjectBox;
+        mNewAlgoTrackerObjectBox.y = originY;
+        resized_frame.copyTo(mBefore);
+        cv::Point pt1(mNewAlgoTrackerObjectBox.x,mNewAlgoTrackerObjectBox.y);
+        cv::Point pt2(pt1.x + mNewAlgoTrackerObjectBox.width, pt1.y+mNewAlgoTrackerObjectBox.height);
+        rectangle(mBefore, pt1,pt2,cv::Scalar(0,0,200));
+        //printf("===before===[%d, %d, %d, %d]\n", pt1.x, pt1.y, pt2.x - pt1.x, pt2.y - pt1.y);
+        printf("====before ===[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
 
-            imshow("---before---", mBefore);
-            waitKey(2);
-            mpNewAlgoTracker->processFrameNotUpdateModel(
-                    resized_frame, mNewAlgoTrackerObjectBox ,
-                    mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax, 
-                    dXMore * scaleX, dXLess*scaleX, dYMore*scaleY, dYLess*scaleY);
-            printf("=====after =====[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
-
-            
-            printf("doing scaleing dividing x %d by factor %f scaleX, resulting%d\n", mNewAlgoTrackerObjectBox.x, scaleX, cvRound((float)mNewAlgoTrackerObjectBox.x / scaleX));
-            mNewAlgoTrackerObjectBox.x = cvRound((float)mNewAlgoTrackerObjectBox.x / scaleX);
-            mNewAlgoTrackerObjectBox.y = cvRound((float)mNewAlgoTrackerObjectBox.y / scaleY);
-
-            bool scaledX = scaled;
-            bool scaledY = scaled;
-            //if ((dXLess == 0 || dXMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.width-m10XMore + m10XLess) > 20 || (mNewAlgoTrackerObjectBox.height-m01YMore + m01YLess) > 20){ scaleX = 1;}//substitue round to convergent algorithm
-            //else{
-            //    scaledX = true;
-            //}
-            if ((scaleX > 1.3) || (dXLess >= 20)|| (dXMore >= 20) &&scaleX < 1.4  && round > 2){
-                scaledX = true;
-            } else {
-                scaleX = 1;
-            }
-            //if ((dXLess == 0 || dXMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.width-m10XMore + m10XLess) > 20 && scaleX >1.3){ scaleX = 1;}//substitue round to convergent algorithm
-            //else {
-            //    scaledY = true;
-            //}
-            if (scaleY > 1.3 || (dYLess >= 0 ) || (dYMore >= 20 ) && round > 2 && scaleY < 1.4) {scaledY = true;;} else {scaleY = 1;}
-            //if ((dYLess == 0 || dYMore == 0 || round < 3) && (scaleX * scaleY) < 1.3 || scaled || scaleX < 1.2 || scaleY < 1.2 || (mNewAlgoTrackerObjectBox.height-m01YMore + m01YLess) > 20 && scaleY > 1.3) {scaleY = 1;}
-            scaled = scaledX || scaledY;
-
-            mNewAlgoTrackerObjectBox.width = cvRound((float)mNewAlgoTrackerObjectBox.width / scaleX);
-            mNewAlgoTrackerObjectBox.height = cvRound((float)mNewAlgoTrackerObjectBox.height / scaleY);
-
-            _frame.copyTo(mAfter);
-            cv::Point pt3(mNewAlgoTrackerObjectBox.x,mNewAlgoTrackerObjectBox.y);
-            cv::Point pt4(pt3.x + mNewAlgoTrackerObjectBox.width, pt3.y+mNewAlgoTrackerObjectBox.height);
-            rectangle(mAfter, pt3,pt4,cv::Scalar(0,0, 200));
-            imshow("---after---", mAfter);
-            waitKey(1);
-            waitKey(0);
-
-            printf("===== finally =====[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
-
-            
-            if (mPointsArea < mArea * 0.15 || round >= 10){
-                mpNewAlgoTracker->updateModel(_frame, mNewAlgoTrackerObjectBox, mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax);
-                retval = true;
-                break;
-            }
-            if (scaled){
-                mpNewAlgoTracker->updateModel(_frame, mNewAlgoTrackerObjectBox, mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax, true);
-                retval = true;
-                break;
-            }
-            //mpNewAlgoTracker->init(_frame, mNewAlgoTrackerObjectBox);
-        } else {
-            mpNewAlgoTracker->updateModel(_frame, mNewAlgoTrackerObjectBox, mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax);
-            retval = true;
-            break;
+        int leftRadius = dXMore * scaleX;
+        int rightRadius = dXLess * scaleX;
+        int upRadius = dYMore * scaleY;
+        int downRadius = dYLess * scaleY;
+        if (abs(dXLess - dXMore) < 5){
+            leftRadius = 1;
+            rightRadius = 1;
+        }
+        if (abs(dYMore - dYLess) < 5){
+            upRadius = 1;
+            downRadius = 1;
         }
 
-    }while(!done && round < 10);
+        mpNewAlgoTracker->processFrameNotUpdateModel(
+                resized_frame, mNewAlgoTrackerObjectBox ,
+                mNewAlgoTrackerRadioMaxIndex, mNewAlgoTrackerRadioMax, 
+                leftRadius, rightRadius, upRadius, downRadius);
+        printf("=====after =====[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
+
+        x = mNewAlgoTrackerObjectBox.x;
+        y = mNewAlgoTrackerObjectBox.y;
+        w = mNewAlgoTrackerObjectBox.width;
+        h = mNewAlgoTrackerObjectBox.height;
+        centerX = (x + (float)w / 2) / scaleX;
+        centerY = (y + (float)h / 2) / scaleY;
+        originX = centerX - w / 2;
+        originY = centerY - h / 2;
+
+        mNewAlgoTrackerObjectBox.x = cvRound(originX);
+        mNewAlgoTrackerObjectBox.y = cvRound(originY);
+
+        _frame.copyTo(mAfter);
+        cv::Point pt3(mNewAlgoTrackerObjectBox.x,mNewAlgoTrackerObjectBox.y);
+        cv::Point pt4(pt3.x + mNewAlgoTrackerObjectBox.width, pt3.y+mNewAlgoTrackerObjectBox.height);
+        rectangle(mAfter, pt3,pt4,cv::Scalar(0,0, 200));
+        printf("===== finally =====[%d, %d, %d, %d]\n", mNewAlgoTrackerObjectBox.x, mNewAlgoTrackerObjectBox.y,mNewAlgoTrackerObjectBox.width, mNewAlgoTrackerObjectBox.height);
+
+        //mpNewAlgoTracker->init(_frame, mNewAlgoTrackerObjectBox);
+        imshow("---before---", mBefore);
+        imshow("---after---", mAfter);
+        waitKey(1);
+        //waitKey(0);
+
+    }
 
 
 
     int spatialRad, colorRad, maxPyrLevel;
     spatialRad = 5;
-    colorRad = 40;
+    colorRad = 10;
     maxPyrLevel = 1;
     cv::Mat segres;
     //cv::Mat src(mImOri, mNewAlgoTrackerObjectBox);
     cv::Mat src(mImOri, mBenchmarkObjectBox);
+    cv::Mat srcSLIC(mImOri, mBenchmarkObjectBox);
     
     pyrMeanShiftFiltering( src, segres, spatialRad, colorRad, maxPyrLevel );
     floodFillPostprocess( segres, Scalar::all(2) );
     src = segres;
 
     imshow("seged", src);
-            waitKey(0);
+            waitKey(1);
+
+    SLIC slic;
+    slic.GenerateSuperpixels(srcSLIC, 175);
+
+    cv::Mat slicResult = slic.GetImgWithContours(cv::Scalar(0, 0, 255));
+    imshow("sliced", slicResult);
+    //waitKey(0);
+
+
     return retval;
+}
+
+void ObjectTracker::checkSize(cv::Mat& frame, cv::Rect& BB, float& scaleX, float& scaleY){
+    int xDiff = 0;
+    int yDiff = 0;
+    int w = BB.width;
+    int h = BB.height;
+    if (BB.x < 0){
+       xDiff += BB.x;
+       BB.x = 0;
+    }
+
+    if (BB.y > 0){
+        yDiff += BB.y;
+        BB.y = 0;
+    
+    }
+    if (BB.x + BB.width > frame.cols){
+        xDiff += BB.x + BB.width - frame.cols;
+        BB.width = frame.cols - BB.x;
+    
+    }
+    if (BB.y + BB.height > frame.rows){
+        yDiff += BB.y + BB.height - frame.rows;
+        BB.height = frame.cols - BB.y;
+    }
+
+    scaleX = (float)w / (w - xDiff);
+    scaleY = (float)h / (h - yDiff);
 }
 
 void ObjectTracker::calcPointAreaAndDirection(ORB_SLAM2::Frame _currentFrame, int filter){
 
-    float outerBoundFactor = 0.1;
+    float outerBoundFactor = 0.15;
     float innerBoundFactor = 0.25;
 
     float toleranceX = mNewAlgoTrackerObjectBox.width * 0.04;
@@ -283,7 +466,7 @@ void ObjectTracker::calcPointAreaAndDirection(ORB_SLAM2::Frame _currentFrame, in
 
                     if ( x >= x1 + toleranceX && x <= x2 - toleranceX && y >= y1 + toleranceY && y<=y2 - toleranceY){
 
-                        if (pMP->Observations() >= filter){
+                        if (pMP->Observations() >= 10){
 
                             if (x > lowerBoundOuterX && x < upperBoundOuterX && y < lowerBoundInnerY){
                                 n01YLess++;
@@ -354,7 +537,7 @@ void ObjectTracker::calcPointAreaAndDirection(ORB_SLAM2::Frame _currentFrame, in
                             lessPointsArea += 400 * s;
                         }
                     }
-                }
+               }
             }
         }
     }

@@ -434,17 +434,17 @@ void Tracking::Track()
         else
             mState=LOST;
 
-        printf("===========+++frame no %d ++====\n", nframe);
+        printf("===================================+++frame no %d ++=============================================================\n", nframe);
         if (nframe >= tracking_start_frame_no){
             if (nframe == tracking_start_frame_no){
-                mpObjectTracker->init(mImGray, mObjectBox); 
+                mpObjectTracker->init(mImOri, mImGray, mObjectBox); 
             } else {
                 pause |= mpObjectTracker->processFrame(mImOri, mImGray, mCurrentFrame);
             }
         }
 
-        if (nframe > 6000){
-            //waitKey(0);
+        if (nframe > 5600){
+            waitKey(0);
         }
 
         mpFrameDrawer->Update(this);

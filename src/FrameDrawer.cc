@@ -190,16 +190,16 @@ void FrameDrawer::DrawFrame(cv::Mat& m1, cv::Mat& m2, cv::Mat& m3)
                     if (mvbtMapPointsMatchFromLocalMap[i]){
                         if (mvbtMapPointsMatchFromPreviousFrame[i]){
                             mntMatchesBoth++;
-                            cv::rectangle(im,pt1,pt2,cv::Scalar(0,0, 255));
-                            cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0, 0, 255),-1);
+                            cv::rectangle(im,pt1,pt2,cv::Scalar(0,0, 200));
+                            cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0, 0, 200),-1);
                         } else {
-                            cv::rectangle(im,pt1,pt2,cv::Scalar(255,0, 0));
-                            cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(255,0,0),-1);
+                            cv::rectangle(im,pt1,pt2,cv::Scalar(200,0, 0));
+                            cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(200,0,0),-1);
                         }
                     
                     } else {
-                        cv::rectangle(im,pt1,pt2,cv::Scalar(0,255,0));
-                        cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0,255,0),-1);
+                        cv::rectangle(im,pt1,pt2,cv::Scalar(0,200,0));
+                        cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0,200,0),-1);
                     
                     }
                     mnTracked++;
@@ -302,8 +302,6 @@ void FrameDrawer::Update(Tracking *pTracker)
     mBenchmarkRadioMaxIndex = pTracker->mpObjectTracker->mBenchmarkRadioMaxIndex;
     mBenchmarkRadioMax = pTracker->mpObjectTracker->mBenchmarkRadioMax;
 
-
-
     mNewAlgoTrackerObjectBox = pTracker->mpObjectTracker->mNewAlgoTrackerObjectBox;
     mNewAlgoTrackerRadioMaxIndex = pTracker->mpObjectTracker->mNewAlgoTrackerRadioMaxIndex;
     mNewAlgoTrackerRadioMax = pTracker->mpObjectTracker->mNewAlgoTrackerRadioMax;
@@ -349,10 +347,12 @@ void FrameDrawer::Update(Tracking *pTracker)
 
 
                     if(pMP->Observations()>0){
-                        mvbMap[i]=true;
+                        if(pMP->Observations()>=10){
+                            mvbMap[i]=true;
+                        }
                     }
-                    else
-                        mvbVO[i]=true;
+                    //else
+                    //    mvbVO[i]=true;
                 }
             }
         }
