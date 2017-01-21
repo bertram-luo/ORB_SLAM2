@@ -9,8 +9,7 @@
 #include "SPTracker.h"
 //#include "Tracking.h"
 
-class ORB_SLAM2::Tracking;
-
+class SPTracker;
 class ObjectTracker{
 
 public:
@@ -18,7 +17,7 @@ public:
 	~ObjectTracker(void);
 
 public:
-    bool processFrame(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
+    bool processFrame(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame, ORB_SLAM2::Tracking*);
     void init(cv::Mat& _oriFrame, cv::Mat& _frame, cv::Rect& _objectBox);
     void newAlgoTrackingAreaAndNormalDirection(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
 
@@ -30,7 +29,7 @@ private:
     bool newAlgoTrackingArea(cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
 
     bool CtmsTracking(cv::Mat _frame, ORB_SLAM2::Frame _currentFrame);
-    bool processFrameSPT(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
+    bool processFrameSPT(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame, ORB_SLAM2::Tracking*);
     bool processFrameCtms(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
     bool processFrameHeuristic(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame);
     void floodFillPostprocess( Mat& img, const Scalar& colorDiff=Scalar::all(1) );

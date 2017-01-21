@@ -108,20 +108,26 @@ bool ObjectTracker::processFrameHeuristic(cv::Mat& _imOri, cv::Mat& _frame, ORB_
     return retval;
 }
 
-bool ObjectTracker::processFrame(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame){
+bool ObjectTracker::processFrame(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame, ORB_SLAM2::Tracking* pTracker){
     //return processFrameHeuristic(_imOri, _frame, _currentFrame);
     printf("[%s: %d],int processFrame\n", __FILE__, __LINE__);
     cv::Mat new_frame = _frame.clone();
     processFrameCtms(_imOri, _frame, _currentFrame);
-    processFrameSPT(_imOri, new_frame, _currentFrame);
+    processFrameSPT(_imOri, new_frame, _currentFrame, pTracker);
     SLAM_DEBUG("result by ctms [%d, %d, %d, %d]", mCtmsTrackerObjectBox.x, mCtmsTrackerObjectBox.y, mCtmsTrackerObjectBox.width, mCtmsTrackerObjectBox.height);
     SLAM_DEBUG("result by SPT [%d, %d, %d, %d]", mSPTrackerObjectBox.x, mSPTrackerObjectBox.y, mSPTrackerObjectBox.width, mSPTrackerObjectBox.height);
     return false;
 }
-bool ObjectTracker::processFrameSPT(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame){
-    static int count = 1;
+bool ObjectTracker::processFrameSPT(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame, ORB_SLAM2::Tracking* pTracker){
+    static int count = 0;
+    static int skip_count = 0;
+    skip_count ++;
+    if (skip_count < 400){
+        return false;
+    }
+
     count ++;
-    printf("in processFrameSPt %d\n", count);
+    SLAM_DEBUG("in processFrameSPt %d\n", count);
     if (count <= 4){
         cv::Mat new_frame = _imOri.clone();
         mpSPTracker->addTrainFrame(new_frame, mCtmsTrackerObjectBox);
@@ -130,7 +136,7 @@ bool ObjectTracker::processFrameSPT(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2:
         }
         return false;
     }
-    mpSPTracker->run(_imOri, mSPTrackerObjectBox);
+    mpSPTracker->run(_imOri, mSPTrackerObjectBox, pTracker);
 }
 
 //This colors the segmentations

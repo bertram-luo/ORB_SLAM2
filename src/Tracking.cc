@@ -439,12 +439,16 @@ void Tracking::Track()
             if (nframe == tracking_start_frame_no){
                 mpObjectTracker->init(mImOri, mImGray, mObjectBox); 
             } else {
-                pause |= mpObjectTracker->processFrame(mImOri, mImGray, mCurrentFrame);
+                pause |= mpObjectTracker->processFrame(mImOri, mImGray, mCurrentFrame, this);
             }
         }
 
-        if (nframe > 5600){
-            waitKey(0);
+        if (nframe == 5600){
+            //waitKey(0);
+        }
+
+        if (nframe == 6200){
+            //waitKey(0);
         }
 
         mpFrameDrawer->Update(this);

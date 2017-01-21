@@ -6,11 +6,14 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <array>
 #include "log.h"
+#include "Tracking.h"
+//#include "MapPoint.h"
 using std::array;
 using std::vector;
 using std::pair;
 using std::string;
 
+//class ORB_SLAM2::Tracking;
 class SPTracker{
 public:
     SPTracker(void);
@@ -18,8 +21,8 @@ public:
     void init(cv::Mat& frame, cv::Rect bb);
     void addTrainFrame(cv::Mat frame, cv::Rect newone);
     void train();
-    void run(cv::Mat& frame, cv::Rect& new_location);
-    void do_tracking(cv::Mat& frame);
+    void run(cv::Mat& frame, cv::Rect& new_location, ORB_SLAM2::Tracking* pTracker = nullptr);
+    void do_tracking(cv::Mat& frame, ORB_SLAM2::Tracking* pTracker);
 
 public:
 
@@ -108,8 +111,8 @@ public:
         SPTFrame(const SPTFrame& rhs){
             labels = nullptr;
             if (rhs.labels != nullptr){
-                SLAM_DEBUG("!!!!!!!!!!!!!!!!1copyint labels!!!!!!!!!");
-                int size = sizeof(int) * rhs.warpimg.rows * rhs.warpimg.cols;
+                SLAM_DEBUG("!!!!!!!!!!!!!!!!1copyint labels with size [%d, %d]!!!!!!!!!", rhs.warpimg_hsi.rows, rhs.warpimg_hsi.cols);
+                int size = sizeof(int) * rhs.warpimg_hsi.rows * rhs.warpimg_hsi.cols;
                 labels = (int*)malloc(size);
                 memcpy(labels, rhs.labels, size);
             }
@@ -179,7 +182,25 @@ private:
     void t1_update_app_model();
     void t1_update_info();
     void rgb2hsi(cv::Mat& image, cv::Mat& res);
+    void copyMapPoints(ORB_SLAM2::Tracking *pTracker);
     int img_width;
     int img_height;
+
+    // SLAM keypoint mappoint related variable
+    vector<cv::KeyPoint> mvCurrentKeys;
+    vector<int> mvbMap, mvbVO;
+    int N;
+
+    bool mbOnlyTracking;
+
+    vector<bool> mvbMapPointsMatchFromLocalMap;
+    vector<bool> mvbMapPointsMatchFromPreviousFrame;
+    int mnTracked, mnTrackedVO;
+    int mnMatchesBoth;
+    void drawMapPoints(cv::Mat& im, int x1, int y1, ORB_SLAM2::Tracking* pTracker);
+    void utilizeMapPoints(cv::Mat& prob, int x1, int y1, float fill_value);
+    vector<float> depth;
+    vector<int> observation;
+
 
 };
