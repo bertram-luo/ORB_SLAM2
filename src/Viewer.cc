@@ -51,11 +51,10 @@ Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer
     mViewpointF = fSettings["Viewer.ViewpointF"];
 }
 
-void Viewer::Run(){
 
+void Viewer::Run(){
 }
-void Viewer::RunBak(bool xx)
-{
+void Viewer::RunBak(bool xx){
     mbFinished = false;
 
     pangolin::CreateWindowAndBind("ORB-SLAM2: Map Viewer",1024,768);

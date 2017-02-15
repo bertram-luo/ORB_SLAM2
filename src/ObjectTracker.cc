@@ -72,9 +72,10 @@ bool ObjectTracker::processFrameCtms(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2
     _imOri.copyTo(mImOri);
     mpBenchmarkTracker->processFrame(_frame, mBenchmarkObjectBox , mBenchmarkRadioMaxIndex, mBenchmarkRadioMax);
     
-    auto retval = newAlgoTrackingArea( _frame, _currentFrame);
-    CtmsTracking(_frame, _currentFrame);
-    return retval; 
+    //auto retval = newAlgoTrackingArea( _frame, _currentFrame);
+    //CtmsTracking(_frame, _currentFrame);
+    //return retval; 
+    return true;
 }
 
 bool ObjectTracker::CtmsTracking(cv::Mat _frame, ORB_SLAM2::Frame _currentFrame){
@@ -120,11 +121,11 @@ bool ObjectTracker::processFrame(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Fr
 }
 bool ObjectTracker::processFrameSPT(cv::Mat& _imOri, cv::Mat& _frame, ORB_SLAM2::Frame _currentFrame, ORB_SLAM2::Tracking* pTracker){
     static int count = 0;
-    static int skip_count = 0;
-    skip_count ++;
-    if (skip_count < 400){
-        return false;
-    }
+    //static int skip_count = 0;
+    //skip_count ++;
+    //if (skip_count < 0){
+    //    return false;
+    //}
 
     count ++;
     SLAM_DEBUG("in processFrameSPt %d\n", count);

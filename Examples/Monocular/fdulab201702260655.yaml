@@ -57,8 +57,8 @@ Viewer.ViewpointF: 2000
 
 
 #--------------------------------------------------------------------------------------------
-Tracking.startFrame : 5775 
-Tracking.x: 200
-Tracking.y: 64
-Tracking.width: 130
-Tracking.height: 396
+Tracking.startFrame : 2338
+Tracking.x: 332
+Tracking.y: 29
+Tracking.width: 141
+Tracking.height: 390
