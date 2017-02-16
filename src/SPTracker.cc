@@ -25,6 +25,8 @@ void floodFill(cv::Mat& im, int x, int y, std::set<float>& val);
 void filterOutValue(cv::Mat& pro_image_w1, int rows, int cols, float threshold);
 void fill_value(cv::Mat& im, float fill_value, std::set<float>& vals, std::set<int>& sps);
 
+void find_weight(vector<float>& w2, cv::Mat& pro_image_w1, SPTracker::SPTFrame& test);
+void sp_gauss_blur(vector<float>& w2, std::vector<std::set<int>>& adjacent_table, int level);
 int SPTracker::SPTFrame::SPTFrame_instance_no = 0;
 SPTracker::~SPTracker(){
 
@@ -311,14 +313,23 @@ void SPTracker::do_tracking(cv::Mat& frame, ORB_SLAM2::Tracking* pTracker){
     auto diff_pixel_scoring = end_pixel_scoring- start_pixel_scoring;
     std::cout << "pixel_scoring consumes"<< chrono::duration <double, milli> (diff_pixel_scoring).count() << " ms" << std::endl;
 
-    //utilizeMapPoints(pro_image_w1, test.x1, test.y1, min_prob, test);
+    utilizeMapPoints(pro_image_w1, test.x1, test.y1, min_prob, test);
 
     imshow("prob after mappoint", pro_image_w1);
     waitKey(1);
 
+
     pro_image_w1 += (-min_prob);
     pro_image_w1 /= (max_prob - min_prob);
     filterOutValue(pro_image_w1, test.warpimg_hsi.rows, test.warpimg_hsi.cols, -min_prob/(max_prob - min_prob));
+
+    vector<float> w2(test.sp_num, 1);
+    find_weight(w2, pro_image_w1, test);
+    sp_gauss_blur(w2, test.adjacent_table, 1);
+    setProbs(pro_image_w1, test.labels, test.warpimg_hsi.rows, test.warpimg_hsi.cols, w2);
+
+    imshow("prob after gauss blur", pro_image_w1);
+    waitKey(1);
 
     cv::Mat pro_image_w1_255;
     pro_image_w1.convertTo(pro_image_w1_255, CV_8UC1, 255, 0);
@@ -1543,6 +1554,32 @@ void find_max_spt_conf_location(cv::Mat& pro_image_w1, int w, int h, int& max_ro
             if (val < min_spt_conf){
                 min_spt_conf = val;
             }
+        }
+    }
+}
+
+void find_weight(vector<float>& w2, cv::Mat& pro_image_w1, SPTracker::SPTFrame& test){
+    int rows = test.warpimg_hsi.rows;
+    int cols = test.warpimg_hsi.cols;
+    for(int row = 0; row < rows; ++row){
+        for(int col = 0; col < cols; ++col){
+            int sp_no = *(test.labels + row * cols + col);
+            w2[sp_no] = pro_image_w1.at<float>(row, col);
+        }
+    }
+
+}
+void sp_gauss_blur(vector<float>& w2, std::vector<std::set<int>>& adjacent_table, int level){
+    auto w2_ori = w2;
+    int sp_num = w2.size();
+    for(int i =0; i < sp_num; ++i){
+            w2[i] = w2[i]*0.5;
+        for(auto iter = adjacent_table[i].begin(); iter != adjacent_table[i].end(); ++iter){
+            //SLAM_DEBUG("distribute to %d", *iter);
+            w2[i] += 0.1 * w2_ori[*iter];
+        }
+        if (w2[i] >= 1.0){
+            w2[i] = 0.9999;
         }
     }
 }
